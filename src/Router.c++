@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (vm.count("version")) {
-            std::cout << "bike-correlations, version 1.0" << std::endl;
+            std::cout << "osm-router, version 1.0" << std::endl;
             return 0;
         }
 
@@ -116,7 +116,6 @@ int Ways::getBBox ()
     lonmin = latmin = FLOAT_MAX;
     lonmax = latmax = -FLOAT_MAX;
 
-    // hubway_stations is extracted directly from the zip file of hubway data
     std::string linetxt, txt, fname;
     fname = "../data/routing_points_" + getCity () + ".txt";
     std::ifstream in_file;
@@ -224,7 +223,7 @@ int Ways::readNodes ()
                 ipos = linetxt.find ("\"");
                 lon = atof (linetxt.substr (0, ipos).c_str());
 
-                // lon ranges are only calculated within BBOX of stations
+                // lon ranges are only calculated within BBOX of RoutingPoints
                 if (lon < nodeLonmin)
                     nodeLonmin = lon;
                 else if (lon > nodeLonmax)
@@ -365,13 +364,13 @@ int Ways::readAllWays ()
     /*
      * The sole point of this routine is to make the boost::graph "gFull", which
      * is in turn used for the three purposes of (1) determining the largest
-     * connected component, (2) enabling bike stations to be allocated to
+     * connected component, (2) enabling routing points to be allocated to
      * the nearest highway vertex that is part of this connected component, and
      * (3) making a list of terminal nodes which are any that appear in multiple
-     * ways plus the station nodes.
+     * ways plus the routing point nodes.
      *
-     * The lat-lons of vertices are needed in gFull for matching stations, but
-     * edge distances are not relevant, so default to 1.0.
+     * The lat-lons of vertices are needed in gFull for matching routing points,
+     * but edge distances are not relevant, so default to 1.0.
      */
     bool inBBox, inway = false, highway = false, oneway;
     int ipos, id0, id1, nodeCount = 0, nways = 0;
@@ -814,20 +813,20 @@ int Ways::getConnected ()
 /************************************************************************
  ************************************************************************
  **                                                                    **
- **                            READSTATIONS                            **
+ **                         READROUTINGPOINTS                          **
  **                                                                    **
  ************************************************************************
  ************************************************************************/
 
 
-int Ways::readStations ()
+int Ways::readRoutingPoints ()
 {
     int ipos = 0;
     std::string linetxt, txt, fname;
 
     fname = "../data/routing_points_" + getCity () + ".txt";
     std::ifstream in_file;
-    Station station;
+    RoutingPoint rpoint;
     
     in_file.open (fname.c_str (), std::ifstream::in);
     assert (!in_file.fail ());
@@ -842,41 +841,43 @@ int Ways::readStations ()
     in_file.seekg (0); 
     getline (in_file, linetxt, '\n'); 
 
-    stationList.resize (0);
-    std::cout << "Matching " << ipos << " stations to nearest OSM nodes ...";
+    RoutingPointsList.resize (0);
+    std::cout << "Matching " << ipos << " routing points to nearest OSM nodes ...";
     std::cout.flush ();
 
     /*
-     * the main task of this routine is to assign stations to their nearest
-     * highway nodes. These nodes must be within the largest connected component
-     * of the OSM graph, which boost *seems* always seems to number with 0.
+     * the main task of this routine is to assign routing points to their
+     * nearest highway nodes. These nodes must be within the largest connected
+     * component of the OSM graph, which boost *seems* always seems to number
+     * with 0.
      *
      * Note that nearestNode is applied to gFull, not gCompact, because the
      * nearest nodes are included as terminalNodes which are used to build
-     * gComact.  remapStations then realigns station indexes into gCompact.
+     * gComact.  remapRoutingPoints then realigns routing point indexes into
+     * gCompact.
      */
     while (getline (in_file, linetxt, '\n'))
     {
         ipos = linetxt.find (",");
         linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
         ipos = linetxt.find (",");
-        station.lat = atof (linetxt.substr (0, ipos).c_str());
+        rpoint.lat = atof (linetxt.substr (0, ipos).c_str());
         linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
         ipos = linetxt.find (",");
-        station.lon = atof (linetxt.substr (0, ipos).c_str());
-        station.node = nearestNode (station.lon, station.lat);
-        assert (nodeNames.find (station.node) != nodeNames.end());
-        station.nodeIndex = nodeNames.find (station.node)->second;
-        stationList.push_back (station);
+        rpoint.lon = atof (linetxt.substr (0, ipos).c_str());
+        rpoint.node = nearestNode (rpoint.lon, rpoint.lat);
+        assert (nodeNames.find (rpoint.node) != nodeNames.end());
+        rpoint.nodeIndex = nodeNames.find (rpoint.node)->second;
+        RoutingPointsList.push_back (rpoint);
 
-        // Also add station nodes to terminalNodes
-        if (terminalNodes.find (station.node) == terminalNodes.end())
-            terminalNodes.insert (station.node);
+        // Also add rpoint nodes to terminalNodes
+        if (terminalNodes.find (rpoint.node) == terminalNodes.end())
+            terminalNodes.insert (rpoint.node);
     } // end while getline
     in_file.close ();
     std::cout << " done." << std::endl;
 
-    return stationList.size ();
+    return RoutingPointsList.size ();
 }
 
 
@@ -946,12 +947,12 @@ long long Ways::nearestNode (float lon0, float lat0)
 /************************************************************************
  ************************************************************************
  **                                                                    **
- **                           REMAPSTATIONS                            **
+ **                        REMAPROUTINGPOINTS                          **
  **                                                                    **
  ************************************************************************
  ************************************************************************/
 
-int Ways::remapStations ()
+int Ways::remapRoutingPoints ()
 {
     /*
      * Dijkstra needs the vertex index number, which now has to changed from the
@@ -963,8 +964,8 @@ int Ways::remapStations ()
 
     auto vs = boost::vertices (gCompact);
 
-    for (std::vector <Station>::iterator sitr = stationList.begin();
-            sitr != stationList.end(); sitr++)
+    for (std::vector <RoutingPoint>::iterator sitr = RoutingPointsList.begin();
+            sitr != RoutingPointsList.end(); sitr++)
     {
         (*sitr).nodeIndex = -INT_MAX;
         for (auto vit = vs.first; vit != vs.second; ++vit)
@@ -1011,23 +1012,23 @@ int Ways::dijkstra (long long fromNode)
             predecessor_map(p_map).
             distance_map(d_map));
 
-    // Check that all stations have been reached
+    // Check that all routing points have been reached
     int nvalid = 0;
-    for (std::vector <Station>::iterator itr = stationList.begin();
-            itr != stationList.end (); itr++)
+    for (std::vector <RoutingPoint>::iterator itr = RoutingPointsList.begin();
+            itr != RoutingPointsList.end (); itr++)
         if (distances [(*itr).nodeIndex] < FLOAT_MAX)
             nvalid++;
-    std::cout << "nvalid = " << nvalid << " / " << stationList.size () <<
+    std::cout << "nvalid = " << nvalid << " / " << RoutingPointsList.size () <<
         std::endl;
-    assert (nvalid == stationList.size ());
+    assert (nvalid == RoutingPointsList.size ());
 
-    // Trace back from each station 
+    // Trace back from each routing point 
     Vertex v0, v;
     dists.resize (0);
     float dist;
 
-    for (std::vector <Station>::iterator itr = stationList.begin();
-            itr != stationList.end (); itr++)
+    for (std::vector <RoutingPoint>::iterator itr = RoutingPointsList.begin();
+            itr != RoutingPointsList.end (); itr++)
     {
         v0 = itr->nodeIndex;
         v = v0;
@@ -1042,22 +1043,22 @@ int Ways::dijkstra (long long fromNode)
         dists.push_back (dist);
     }
 
-    assert (dists.size () == stationList.size ());
+    assert (dists.size () == RoutingPointsList.size ());
     /*
-     * First have to match long long fromNode to index# within stationList.
-     * There are cases where two stations match to same OSM node, so distmats
-     * have to be filled for all such multiples
+     * First have to match long long fromNode to index# within
+     * RoutingPointsList.  There are cases where two routing points match to
+     * same OSM node, so distmats have to be filled for all such multiples
      */
     std::vector <int> id;
     id.resize (0);
-    for (int i=0; i<stationList.size(); i++)
-        if (stationList [i].nodeIndex == fromNode)
+    for (int i=0; i<RoutingPointsList.size(); i++)
+        if (RoutingPointsList [i].nodeIndex == fromNode)
             id.push_back (i);
     assert (id.size () > 0);
     for (int i=0; i<id.size (); i++)
         idDone [id[i]] = true;
 
-    for (int i=0; i<stationList.size (); i++)
+    for (int i=0; i<RoutingPointsList.size (); i++)
         for (std::vector <int>::iterator itr=id.begin(); itr != id.end(); itr++)
             distMat (*itr, i) = dists [i];
 
@@ -1075,7 +1076,7 @@ int Ways::dijkstra (long long fromNode)
 
 void Ways::writeDMat ()
 {
-    std::string fname = "stationDistsMat-" + getCity () + ".csv";
+    std::string fname = "RoutingPointDistsMat-" + getCity () + ".csv";
 
     std::ofstream out_file;
 

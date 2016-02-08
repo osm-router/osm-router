@@ -45,14 +45,11 @@
  * The boost::graphs are constructed in two phases:
  * (1) A graph "gFull" is constructed from all OSM nodes and highways, and used
  * to identify both the largest connected component and all terminal or junction
- * nodes (simply as those that appear in multiple different ways). The bike
- * stations are then mapped onto the nearest vertices within this largest
- * component, and these vertices are also added to terminalNodes.
- * (2) A second reading of the data is used to make "gCompact" which only has
- * terminalNodes as vertices, and edge distances as traced along all
- * intermediate nodes.
- *
- * TODO: CGAL check that station points lie within OSM polygon
+ * nodes (simply as those that appear in multiple different ways). The routing
+ * points are then mapped onto the nearest vertices within this largest
+ * component, and these vertices are also added to terminalNodes.  (2) A second
+ * reading of the data is used to make "gCompact" which only has terminalNodes
+ * as vertices, and edge distances as traced along all intermediate nodes.
  */
 
 #include "Utils.h"
@@ -80,7 +77,7 @@ typedef boost::unordered_map <long long, ddPair>::iterator umapPair_Itr;
 typedef std::pair <std::string, float> ProfilePair;
 typedef float Weight;
 
-struct Station
+struct RoutingPoint
 {
     float lon, lat;
     long long node;
@@ -146,7 +143,7 @@ class Ways
         float latmin, lonmin, latmax, lonmax;
         std::string _dirName;
         const std::string _city;
-        const std::string osmDir = "/data/data/bikes/";
+        const std::string osmDir = "../data/";
         std::string osmFile;
         std::vector <ProfilePair> profile;
         boost::unordered_set <long long> terminalNodes;
@@ -167,7 +164,7 @@ class Ways
          */
         umapPair allNodes;
         umapInt nodeNames;
-        std::vector <Station> stationList;
+        std::vector <RoutingPoint> RoutingPointsList;
         std::vector <float> dists;
         std::vector <bool> idDone; // TODO: DELETE!
         Ways (std::string str)
@@ -185,36 +182,36 @@ class Ways
             err = readNodes();
             err = readAllWays ();
             err = getConnected ();
-            err = readStations ();
-            distMat.resize (stationList.size (), stationList.size ());
+            err = readRoutingPoints ();
+            distMat.resize (RoutingPointsList.size (), RoutingPointsList.size ());
 
             // gFull is no longer needed, so can be destroyed
             gFull.clear ();
             
             err = readCompactWays ();
-            err = remapStations ();
+            err = remapRoutingPoints ();
 
-            std::cout << "Getting inter-station distances";
+            std::cout << "Getting distances between routing points";
             std::cout.flush ();
             count = 0;
-            idDone.resize (stationList.size ());
-            for (int i=0; i<stationList.size (); i++)
+            idDone.resize (RoutingPointsList.size ());
+            for (int i=0; i<RoutingPointsList.size (); i++)
                 idDone [i] = false;
-            for (std::vector<Station>::iterator itr=stationList.begin();
-                    itr != stationList.end(); itr++)
+            for (std::vector<RoutingPoint>::iterator itr=RoutingPointsList.begin();
+                    itr != RoutingPointsList.end(); itr++)
             {
                 err = dijkstra (itr->nodeIndex);
-                assert (dists.size () == stationList.size ());
-                std::cout << "\rGetting inter-station distances " <<
-                    count << "/" << stationList.size () << " ";
+                assert (dists.size () == RoutingPointsList.size ());
+                std::cout << "\rGetting distances between routing points " <<
+                    count << "/" << RoutingPointsList.size () << " ";
                 std::cout.flush ();
                 count++;
             }
-            std::cout << "\rGetting inter-station distances " <<
-                stationList.size () << "/" << stationList.size () <<
+            std::cout << "\rGetting distances between routing points " <<
+                RoutingPointsList.size () << "/" << RoutingPointsList.size () <<
                 " done." << std::endl;
 
-            for (int i=0; i<stationList.size (); i++)
+            for (int i=0; i<RoutingPointsList.size (); i++)
                 if (!idDone [i])
                     std::cout << "ERROR: ID#" << i << " was not done" <<
                         std::endl;
@@ -223,7 +220,7 @@ class Ways
         }
         ~Ways ()
         {
-            stationList.resize (0);
+            RoutingPointsList.resize (0);
             dists.resize (0);
         }
 
@@ -261,8 +258,8 @@ class Ways
         int readTerminalNodes ();
         int readAllWays ();
         int getConnected ();
-        int readStations ();
-        int remapStations ();
+        int readRoutingPoints ();
+        int remapRoutingPoints ();
         int readCompactWays ();
         int dijkstra (long long fromNode);
         void writeDMat ();
