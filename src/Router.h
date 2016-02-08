@@ -20,7 +20,13 @@
  *  Author:     Mark Padgham
  *  E-Mail:     mark.padgham@email.com
  *
- *  Description:    Routing engine for OSM based on boost::graph
+ *  Description:    C++ implementation of OSM router using boost::graph.
+ *                  Designed to work in a designated area, and so reads data
+ *                  from a planet.osm file. Hard-coded at present to read data
+ *                  for greater London and greater NYC, and to route between
+ *                  points given in ./data/routing-points-(city).txt using the
+ *                  profile given in profile.cfg
+ *
  *  Limitations:
  *
  *  Dependencies:       libboost
@@ -226,7 +232,7 @@ class Ways
 
         void setProfile ()
         {
-            const std::string configfile = "../dists.cfg"; 
+            const std::string configfile = "../profile.cfg"; 
             int ipos;
             float value;
             std::string line, field;
@@ -248,25 +254,6 @@ class Ways
                 profile.push_back (std::make_pair (field, value));
             }
             in_file.close ();
-
-            // Note that routino has motorway preference = 0.0, but this doesn't
-            // work if weights for preference=0.0 are set to FLOAT_MAX.
-            /*
-            profile.push_back (std::make_pair ("motorway", 0.01));
-            profile.push_back (std::make_pair ("trunk", 0.3));
-            profile.push_back (std::make_pair ("primary", 0.7));
-            profile.push_back (std::make_pair ("secondary", 0.8));
-            profile.push_back (std::make_pair ("tertiary", 0.9));
-            profile.push_back (std::make_pair ("unclassified", 0.9));
-            profile.push_back (std::make_pair ("residential", 0.9));
-            profile.push_back (std::make_pair ("service", 0.9));
-            profile.push_back (std::make_pair ("track", 0.9));
-            profile.push_back (std::make_pair ("cycleway", 1.0));
-            profile.push_back (std::make_pair ("path", 0.9));
-            profile.push_back (std::make_pair ("steps", 0.1));
-            profile.push_back (std::make_pair ("ferry", 0.2));
-            profile.push_back (std::make_pair ("footway", 0.5));
-            */
         };
 
         int getBBox ();

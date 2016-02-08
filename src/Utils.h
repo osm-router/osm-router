@@ -20,7 +20,12 @@
  *  Author:     Mark Padgham
  *  E-Mail:     mark.padgham@email.com
  *
- *  Description:    Routing engine for OSM based on boost::graph
+ *  Description:    C++ implementation of OSM router using boost::graph.
+ *                  Designed to work in a designated area, and so reads data
+ *                  from a planet.osm file. Hard-coded at present to read data
+ *                  for greater London and greater NYC, and to route between
+ *                  points given in ./data/routing-points-(city).txt using the
+ *                  profile given in profile.cfg
  *
  *  Limitations:
  *

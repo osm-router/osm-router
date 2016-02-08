@@ -20,7 +20,13 @@
  *  Author:     Mark Padgham
  *  E-Mail:     mark.padgham@email.com
  *
- *  Description:    Routing engine for OSM based on boost::graph
+ *  Description:    C++ implementation of OSM router using boost::graph.
+ *                  Designed to work in a designated area, and so reads data
+ *                  from a planet.osm file. Hard-coded at present to read data
+ *                  for greater London and greater NYC, and to route between
+ *                  points given in ./data/routing-points-(city).txt using the
+ *                  profile given in profile.cfg
+ *
  *  Limitations:
  *
  *  Dependencies:       libboost
@@ -51,7 +57,7 @@ int main(int argc, char *argv[]) {
         boost::program_options::options_description config("Configuration");
         config.add_options()
             ("city,c", boost::program_options::value <std::string> 
-                (&city)->default_value ("boston"), "city")
+                (&city)->default_value ("london"), "city")
             ;
 
         boost::program_options::options_description cmdline_options;
@@ -84,16 +90,10 @@ int main(int argc, char *argv[]) {
     }    
 
     std::transform (city.begin(), city.end(), city.begin(), ::tolower);
-    if (city.substr (0, 2) == "bo")
-        city = "boston";
-    else if (city.substr (0, 2) == "ch")
-        city = "chicago";
+    if (city.substr (0, 2) == "lo")
+        city = "london";
     else if (city.substr (0, 2) == "ny")
         city = "nyc";
-    else if (city.substr (0, 2) == "lo")
-        city = "london";
-    else if (city.substr (0, 2) == "dc" || city.substr (0, 2) == "wa")
-        city = "washingtondc";
 
     Ways ways (city);
 };
@@ -118,24 +118,7 @@ int Ways::getBBox ()
 
     // hubway_stations is extracted directly from the zip file of hubway data
     std::string linetxt, txt, fname;
-    if (getCity () == "boston")
-    {
-        fname = "../data/hubway_stations.csv";
-        nskips = 4;
-    }
-    else if (getCity () == "chicago")
-    {
-        // Note chicago stations move a little between the years, but this is
-        // ignored here.
-        fname = "../data/Divvy_Stations_2014-Q3Q4.csv";
-        nskips = 2;
-    }
-    else if (getCity () == "nyc" || getCity () == "london" || 
-            getCity () == "washingtondc")
-    {
-        fname = "../data/station_latlons_" + getCity () + ".txt";
-        nskips = 1;
-    }
+    fname = "../data/routing_points_" + getCity () + ".txt";
     std::ifstream in_file;
     
     in_file.open (fname.c_str (), std::ifstream::in);
@@ -147,11 +130,8 @@ int Ways::getBBox ()
 
     while (getline (in_file, linetxt, '\n'))
     {
-        for (int i=0; i<nskips; i++)
-        {
-            ipos = linetxt.find (",");
-            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
-        }
+        ipos = linetxt.find (",");
+        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
         ipos = linetxt.find (",");
 
         lat = atof (linetxt.substr (0, ipos).c_str());
@@ -842,27 +822,10 @@ int Ways::getConnected ()
 
 int Ways::readStations ()
 {
-    int nskips, ipos = 0;
+    int ipos = 0;
     std::string linetxt, txt, fname;
-    if (getCity () == "boston")
-    {
-        // hubway_stations is extracted directly from the zip file of hubway data
-        fname = "../data/hubway_stations.csv";
-        nskips = 4;
-    }
-    else if (getCity () == "chicago")
-    {
-        // Note chicago stations move a little between the years, but this is
-        // ignored here.
-        fname = "../data/Divvy_Stations_2014-Q3Q4.csv";
-        nskips = 2;
-    }
-    else if (getCity () == "nyc" || getCity () == "london" ||
-            getCity () == "washingtondc")
-    {
-        fname = "../data/station_latlons_" + getCity () + ".txt";
-        nskips = 1;
-    }
+
+    fname = "../data/routing_points_" + getCity () + ".txt";
     std::ifstream in_file;
     Station station;
     
@@ -894,11 +857,8 @@ int Ways::readStations ()
      */
     while (getline (in_file, linetxt, '\n'))
     {
-        for (int i=0; i<nskips; i++)
-        {
-            ipos = linetxt.find (",");
-            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
-        }
+        ipos = linetxt.find (",");
+        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
         ipos = linetxt.find (",");
         station.lat = atof (linetxt.substr (0, ipos).c_str());
         linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
