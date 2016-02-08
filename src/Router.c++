@@ -1057,9 +1057,6 @@ int Ways::dijkstra (long long fromNode)
             itr != stationList.end (); itr++)
         if (distances [(*itr).nodeIndex] < FLOAT_MAX)
             nvalid++;
-        else
-            std::cout << "Invalid station at (" <<
-                (*itr).lon << ", " << (itr).lat << ")" << std::endl;
     std::cout << "nvalid = " << nvalid << " / " << stationList.size () <<
         std::endl;
     assert (nvalid == stationList.size ());
