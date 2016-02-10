@@ -16,9 +16,8 @@
  *  You should have received a copy of the GNU General Public License along with
  *  NeutralClusters.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  Copyright   Mark Padgham December 2015
- *  Author:     Mark Padgham
- *  E-Mail:     mark.padgham@email.com
+ *  Author:     Mark Padgham / Andreas Petutschnig
+ *  E-Mail:     mark.padgham@email.com / andras@petutschnig.de
  *
  *  Description:    C++ implementation of OSM router using boost::graph.
  *                  Designed to work in a designated area, and so reads data
