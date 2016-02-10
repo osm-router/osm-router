@@ -849,7 +849,7 @@ int Ways::readRoutingPoints ()
         stationNodeFile.seekg (0);
         getline (stationNodeFile, linetxt, '\n'); //header
 
-        std::cout << "Matching " << ipos << " routing points to nearest OSM nodes, using previously calculated nodes in file " << stationNodeFileName << "...";
+        std::cout << "Matching " << ipos << " routing points to nearest OSM nodes, using previously calculated nodes from file " << stationNodeFileName << "...";
 
         RoutingPoint rpoint;
 
@@ -1081,7 +1081,7 @@ int Ways::dijkstra (long long fromNode)
             nvalid++;
     std::cout << "nvalid = " << nvalid << " / " << RoutingPointsList.size () <<
         std::endl;
-    //assert (nvalid == RoutingPointsList.size ());
+    assert (nvalid == RoutingPointsList.size ());
 
     // Trace back from each routing point 
     Vertex v0, v;
