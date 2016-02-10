@@ -820,61 +820,123 @@ int Ways::getConnected ()
 
 int Ways::readRoutingPoints ()
 {
-    int ipos = 0;
-    std::string linetxt, txt, fname;
+    int station_id, ipos = 0;
+    std::string linetxt, txt, fname, stationNodeFileName;
 
+    stationNodeFileName = "../data/routing_point_nodes_" + getCity () + ".txt";
     fname = "../data/routing_points_" + getCity () + ".txt";
-    std::ifstream in_file;
-    RoutingPoint rpoint;
-    
-    in_file.open (fname.c_str (), std::ifstream::in);
-    assert (!in_file.fail ());
-
-    in_file.clear ();
-    in_file.seekg (0); 
-    getline (in_file, linetxt, '\n'); // header
-    while (getline (in_file, linetxt, '\n'))
-        ipos++;
-
-    in_file.clear ();
-    in_file.seekg (0); 
-    getline (in_file, linetxt, '\n'); 
-
-    RoutingPointsList.resize (0);
-    std::cout << "Matching " << ipos << " routing points to nearest OSM nodes ...";
-    std::cout.flush ();
 
     /*
-     * the main task of this routine is to assign routing points to their
-     * nearest highway nodes. These nodes must be within the largest connected
-     * component of the OSM graph, which boost *seems* always seems to number
-     * with 0.
-     *
-     * Note that nearestNode is applied to gFull, not gCompact, because the
-     * nearest nodes are included as terminalNodes which are used to build
-     * gComact.  remapRoutingPoints then realigns routing point indexes into
-     * gCompact.
+     * If the routing points are matched to the OSM nodes the first time, 
+     * the matching results are written into the file stationNodeFileName.
+     * If the file already exists, the matching results are taken from there
+     * instead of newly calculating them.
      */
-    while (getline (in_file, linetxt, '\n'))
-    {
-        ipos = linetxt.find (",");
-        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
-        ipos = linetxt.find (",");
-        rpoint.lat = atof (linetxt.substr (0, ipos).c_str());
-        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
-        ipos = linetxt.find (",");
-        rpoint.lon = atof (linetxt.substr (0, ipos).c_str());
-        rpoint.node = nearestNode (rpoint.lon, rpoint.lat);
-        assert (nodeNames.find (rpoint.node) != nodeNames.end());
-        rpoint.nodeIndex = nodeNames.find (rpoint.node)->second;
-        RoutingPointsList.push_back (rpoint);
 
-        // Also add rpoint nodes to terminalNodes
-        if (terminalNodes.find (rpoint.node) == terminalNodes.end())
-            terminalNodes.insert (rpoint.node);
-    } // end while getline
-    in_file.close ();
-    std::cout << " done." << std::endl;
+    if (access (stationNodeFileName.c_str (), F_OK) != -1)
+    {
+        std::ifstream stationNodeFile;
+        stationNodeFile.open (stationNodeFileName, std::ifstream::in);
+        assert (!stationNodeFile.fail ());
+
+        stationNodeFile.clear ();
+        stationNodeFile.seekg (0);
+        getline (stationNodeFile, linetxt, '\n'); //header
+        while (getline (stationNodeFile, linetxt, '\n'))
+            ipos++;
+
+        stationNodeFile.clear ();
+        stationNodeFile.seekg (0);
+        getline (stationNodeFile, linetxt, '\n'); //header
+
+        std::cout << "Matching " << ipos << " routing points to nearest OSM nodes, using previously calculated nodes in file " << stationNodeFileName << "...";
+
+        RoutingPoint rpoint;
+
+        while (getline (stationNodeFile, linetxt, '\n'))
+        {
+            ipos = linetxt.find (",");
+            station_id = atof (linetxt.substr (0, ipos).c_str());
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            ipos = linetxt.find (",");
+            rpoint.node = atof (linetxt.substr (0, ipos).c_str());
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            ipos = linetxt.find (",");
+            rpoint.nodeIndex = atof (linetxt.substr (0, ipos).c_str());
+            RoutingPointsList.push_back (rpoint);
+
+            if (terminalNodes.find (rpoint.node) == terminalNodes.end())
+                terminalNodes.insert (rpoint.node);
+        }
+        stationNodeFile.close ();
+
+        std::cout << " done." << std::endl;
+    }
+    else
+    {
+        std::ifstream in_file;
+
+        RoutingPoint rpoint;
+
+        in_file.open (fname.c_str (), std::ifstream::in);
+        assert (!in_file.fail ());
+
+        in_file.clear ();
+        in_file.seekg (0); 
+        getline (in_file, linetxt, '\n'); // header
+        while (getline (in_file, linetxt, '\n'))
+            ipos++;
+
+        in_file.clear ();
+        in_file.seekg (0); 
+        getline (in_file, linetxt, '\n'); 
+
+        RoutingPointsList.resize (0);
+        std::cout << "Matching " << ipos << " routing points to nearest OSM nodes ...";
+        std::cout.flush ();
+
+
+        /*
+         * the main task of this routine is to assign routing points to their
+         * nearest highway nodes. These nodes must be within the largest connected
+         * component of the OSM graph, which boost *seems* always seems to number
+         * with 0.
+         *
+         * Note that nearestNode is applied to gFull, not gCompact, because the
+         * nearest nodes are included as terminalNodes which are used to build
+         * gComact.  remapRoutingPoints then realigns routing point indexes into
+         * gCompact.
+         */
+
+        std::ofstream stationNodeFile;
+        stationNodeFile.open (stationNodeFileName);
+        stationNodeFile << "id, node, nodeIndex" << '\n';
+
+        while (getline (in_file, linetxt, '\n'))
+        {
+            ipos = linetxt.find (",");
+            station_id = atof (linetxt.substr (0, ipos).c_str());
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            ipos = linetxt.find (",");
+            rpoint.lat = atof (linetxt.substr (0, ipos).c_str());
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            ipos = linetxt.find (",");
+            rpoint.lon = atof (linetxt.substr (0, ipos).c_str());
+            rpoint.node = nearestNode (rpoint.lon, rpoint.lat);
+            assert (nodeNames.find (rpoint.node) != nodeNames.end());
+            rpoint.nodeIndex = nodeNames.find (rpoint.node)->second;
+            RoutingPointsList.push_back (rpoint);
+
+            stationNodeFile << station_id << ", " << rpoint.node << ", " << rpoint.nodeIndex << '\n';
+
+            // Also add rpoint nodes to terminalNodes
+            if (terminalNodes.find (rpoint.node) == terminalNodes.end())
+                terminalNodes.insert (rpoint.node);
+        } // end while getline
+        stationNodeFile.close ();
+        in_file.close ();
+        std::cout << " done." << std::endl;
+    }
 
     return RoutingPointsList.size ();
 }
@@ -921,9 +983,9 @@ long long Ways::nearestNode (float lon0, float lat0)
         {
             lat = vertex_lat [*vit];
             lon = vertex_lon [*vit];
-            
+
             //d = std::abs (lon - lon0) + std::abs (lat - lat0);
-            
+
             xd = (lon - lon0) * PI / 180.0;
             yd = (lat - lat0) * PI / 180.0;
             d = sin (yd / 2.0) * sin (yd / 2.0) + cos (lat * PI / 180.0) *
@@ -1004,7 +1066,7 @@ int Ways::dijkstra (long long fromNode)
     auto d_map = boost::make_iterator_property_map
         (&distances[0], boost::get(boost::vertex_index, gCompact));
     auto w_map = boost::get(&bundled_edge_type::weight, gCompact); 
-    
+
     int start = vertex (fromNode, gCompact);
     boost::dijkstra_shortest_paths(gCompact, start,
             weight_map(w_map). 
@@ -1019,7 +1081,7 @@ int Ways::dijkstra (long long fromNode)
             nvalid++;
     std::cout << "nvalid = " << nvalid << " / " << RoutingPointsList.size () <<
         std::endl;
-    assert (nvalid == RoutingPointsList.size ());
+    //assert (nvalid == RoutingPointsList.size ());
 
     // Trace back from each routing point 
     Vertex v0, v;
