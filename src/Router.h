@@ -247,6 +247,13 @@ class Ways
                 line = line.substr (ipos + 1, line.length () - ipos - 1);
                 value = atof (line.c_str ());
 
+                if (value == 0)
+                {
+                    std::cout << "No valid weight for OSM street type '" << field <<
+                        "' provided in profile.cfg. Using default value 0.01." << std:endl;
+                    value = 0.01;
+                }
+
                 profile.push_back (std::make_pair (field, value));
             }
             in_file.close ();
