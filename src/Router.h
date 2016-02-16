@@ -250,7 +250,7 @@ class Ways
                 if (value == 0)
                 {
                     std::cout << "No valid weight for OSM street type '" << field <<
-                        "' provided in profile.cfg. Using default value 0.01." << std:endl;
+                        "' provided in profile.cfg. Using default value 0.01." << std::endl;
                     value = 0.01;
                 }
 
