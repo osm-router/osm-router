@@ -823,7 +823,7 @@ int Ways::readRoutingPoints ()
     int station_id, ipos = 0;
     std::string linetxt, txt, fname, stationNodeFileName;
 
-    stationNodeFileName = "../data/routing_point_nodes_" + getCity () + ".txt";
+    stationNodeFileName = "routing_point_nodes_" + getCity () + ".txt";
     fname = "../data/routing_points_" + getCity () + ".txt";
 
     /*
