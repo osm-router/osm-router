@@ -33,3 +33,7 @@
 # Generated files in build
 build/
 !build/mycmake.bash
+
+# Generated files in extract_profiles
+extract_profiles/extract
+extract_profiles/*.cfg
