@@ -242,19 +242,15 @@ class Ways
             while (!in_file.eof ())
             {
                 getline (in_file, line, '\n');
-                ipos = line.find (',');
-                field = line.substr (0, ipos);
-                line = line.substr (ipos + 1, line.length () - ipos - 1);
-                value = atof (line.c_str ());
-
-                if (value == 0)
+                if (!in_file.eof ())
                 {
-                    std::cout << "No valid weight for OSM street type '" << field <<
-                        "' provided in profile.cfg. Using default value 0.01." << std::endl;
-                    value = 0.01;
-                }
+                    ipos = line.find (',');
+                    field = line.substr (0, ipos);
+                    line = line.substr (ipos + 1, line.length () - ipos - 1);
+                    value = atof (line.c_str ());
 
-                profile.push_back (std::make_pair (field, value));
+                    profile.push_back (std::make_pair (field, value));
+                }
             }
             in_file.close ();
         };
