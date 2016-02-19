@@ -8,7 +8,7 @@ TARGET=extract
 all: $(TARGET)
 
 $(TARGET): $(SOURCES)
-	$(CC) $< -o $@
+	$(CC) $< -o $@ -lboost_system -lboost_filesystem
 
 clean:
 	rm -rf $(TARGET)

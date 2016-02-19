@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <boost/filesystem.hpp>
 #include <fstream>
 #include <iostream>
 #include <stdlib.h>
@@ -16,13 +17,27 @@
 
 int main (int argc, char *argv[])
 {
+    if (argc != 2)
+    {
+        std::cerr << "usage: extract <profiles.xml>" << std::endl;
+        exit (1);
+    }
     std::string profileType, profileName, osmHighway, percent_str, linetxt, xml_in = argv[1];
+    std::string output_dir = "../data/weighting_profiles";
     unsigned ipos;
     float percent, percent_default = 0.01;
     std::ifstream stream_in;
     std::ofstream stream_out;
     stream_in.open (xml_in.c_str (), std::ifstream::in);
     assert (!stream_in.fail ());
+
+    //create output directory if not present
+    boost::filesystem::path dir (output_dir);
+    if (!(boost::filesystem::exists (dir)))
+    {
+        std::cout << "Creating output directory at " << output_dir << std::endl;
+        boost::filesystem::create_directory (dir);
+    }
 
     while (getline (stream_in, linetxt, '\n'))
     {
@@ -38,7 +53,7 @@ int main (int argc, char *argv[])
             ipos = profileType.find ("\"");
             profileType = profileType.substr (0, ipos);
 
-            profileName = "profile_" + profileType + ".cfg";
+            profileName = output_dir + "/profile_" + profileType + ".cfg";
             stream_out.open (profileName.c_str ());
         }
         if (linetxt.find ("preference highway") != std::string::npos)
