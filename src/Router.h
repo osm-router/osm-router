@@ -168,6 +168,7 @@ class Ways
      */
     umapPair allNodes;
     umapInt nodeNames;
+    bool firstRun = true;
     std::vector <RoutingPoint> RoutingPointsList;
     std::vector <float> dists;
     std::vector <bool> idDone; // TODO: DELETE!
@@ -189,21 +190,27 @@ class Ways
             {
                 profileName = p.stem ().c_str ();
                 profileName = profileName.substr (profileName.find ("_") + 1);
+                std::cout << "Routing weight profile: " << profileName << std::endl;
 
                 setProfile (profileName.c_str ());
 
-                err = getBBox ();
-                err = readNodes();
-                err = readAllWays ();
-                err = getConnected ();
-                err = readRoutingPoints ();
-                distMat.resize (RoutingPointsList.size (), RoutingPointsList.size ());
+                // These operations are only called once
+                if (firstRun)
+                {
+                    firstRun = false;
+                    err = getBBox ();
+                    err = readNodes();
+                    err = readAllWays ();
+                    err = getConnected ();
+                    err = readRoutingPoints ();
+                    distMat.resize (RoutingPointsList.size (), RoutingPointsList.size ());
+                }
 
-                // gFull is no longer needed, so can be destroyed
-                gFull.clear ();
+                    // gFull is no longer needed, so can be destroyed
+                    gFull.clear ();
 
-                err = readCompactWays ();
-                err = remapRoutingPoints ();
+                    err = readCompactWays ();
+                    err = remapRoutingPoints ();
 
                 std::cout << "Getting distances between routing points";
                 std::cout.flush ();
@@ -222,8 +229,9 @@ class Ways
                     count++;
                 }
                 std::cout << "\rGetting distances between routing points " <<
-                    RoutingPointsList.size () << "/" << RoutingPointsList.size () <<
-                    " done." << std::endl;
+                    RoutingPointsList.size () << "/" << RoutingPointsList.size
+                    () << std::endl;
+                    std::cout << "done." << std::endl;
 
                 for (int i=0; i<RoutingPointsList.size (); i++)
                     if (!idDone [i])
@@ -285,5 +293,6 @@ class Ways
 
     float calcDist (std::vector <float> x, std::vector <float> y);
     long long nearestNode (float lon0, float lat0);
-    std::string getCity () { return _city;  }
+    std::string getCity () { return _city; }
+    std::string getCityProfile () { return _city + "_" + profileName;  }
 };

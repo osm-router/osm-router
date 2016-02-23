@@ -1079,8 +1079,7 @@ int Ways::dijkstra (long long fromNode)
             itr != RoutingPointsList.end (); itr++)
         if (distances [(*itr).nodeIndex] < FLOAT_MAX)
             nvalid++;
-    std::cout << "nvalid = " << nvalid << " / " << RoutingPointsList.size () <<
-        std::endl;
+    std::cout << "nvalid = " << nvalid << " / " << RoutingPointsList.size ();
     assert (nvalid == RoutingPointsList.size ());
 
     // Trace back from each routing point 
@@ -1137,7 +1136,7 @@ int Ways::dijkstra (long long fromNode)
 
 void Ways::writeDMat ()
 {
-    std::string fname = "RoutingPointDistsMat-" + getCity () + ".csv";
+    std::string fname = "RoutingPointDistsMat-" + getCityProfile () + ".csv";
 
     std::ofstream out_file;
 
