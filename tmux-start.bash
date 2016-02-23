@@ -23,6 +23,14 @@ tmux send-keys -t $SESSION:2 ':' 'tabe README.md' C-m
 tmux split-window -h
 tmux select-pane -t 0
 
-tmux select-window -t $SESSION:1
+cd ./extract_profiles/
+tmux new-window -t $SESSION:3 -n extract_profile
+
+tmux select-window -t $SESSION:3
+tmux send-keys -t $SESSION:3 'vim extract.c++' C-m
+tmux split-window -h
+tmux send-keys -t $SESSION:3 'vim Makefile' C-m
+tmux split-window -v
+tmux select-pane -t 0
 
 tmux attach -t $SESSION
