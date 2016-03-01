@@ -390,7 +390,7 @@ int Ways::readAllWays ()
     typedef std::vector <std::string> strvec;
     strvec oneWayList;
     oneWayList.push_back ("k=\"oneway\" v=\"yes");
-    oneWayList.push_back ("k=\"oneway\" v=\"0");
+    oneWayList.push_back ("k=\"oneway\" v=\"1");
     oneWayList.push_back ("k=\"oneway\" v=\"true");
 
     /*
