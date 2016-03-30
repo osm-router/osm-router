@@ -142,6 +142,7 @@ class Ways
     private:
     Graph_t gFull, gCompact;
     std::string profileName;
+    unsigned numWeightingProfiles=0, countWeightingProfiles;
     protected:
     float latmin, lonmin, latmax, lonmax;
     std::string _dirName;
@@ -184,13 +185,24 @@ class Ways
         boost::filesystem::path profiles (profileDir);
         boost::filesystem::directory_iterator it (profiles), eod;
 
+        //count weighting profiles
+
+        for (boost::filesystem::directory_iterator itCount (profiles);
+        itCount != boost::filesystem::directory_iterator (); itCount++)
+        {
+            numWeightingProfiles++;
+        }
+
         BOOST_FOREACH (boost::filesystem::path const &p, std::make_pair (it, eod))
         {
             if (is_regular_file(p))
             {
+                countWeightingProfiles++;
                 profileName = p.stem ().c_str ();
                 profileName = profileName.substr (profileName.find ("_") + 1);
-                std::cout << "Routing weight profile: " << profileName << std::endl;
+                std::cout << "Routing weight profile: " << profileName << " ("
+                    << countWeightingProfiles << "/" << numWeightingProfiles
+                    << ")" << std::endl;
 
                 setProfile (profileName.c_str ());
 
@@ -206,11 +218,11 @@ class Ways
                     distMat.resize (RoutingPointsList.size (), RoutingPointsList.size ());
                 }
 
-                    // gFull is no longer needed, so can be destroyed
-                    gFull.clear ();
+                // gFull is no longer needed, so can be destroyed
+                gFull.clear ();
 
-                    err = readCompactWays ();
-                    err = remapRoutingPoints ();
+                err = readCompactWays ();
+                err = remapRoutingPoints ();
 
                 std::cout << "Getting distances between routing points";
                 std::cout.flush ();
@@ -231,7 +243,7 @@ class Ways
                 std::cout << "\rGetting distances between routing points " <<
                     RoutingPointsList.size () << "/" << RoutingPointsList.size
                     () << std::endl;
-                    std::cout << "done." << std::endl;
+                std::cout << "done." << std::endl;
 
                 for (int i=0; i<RoutingPointsList.size (); i++)
                     if (!idDone [i])
