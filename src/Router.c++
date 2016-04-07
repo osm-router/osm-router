@@ -252,13 +252,6 @@ int Ways::readNodes ()
     std::vector <long long> waynodes;
     boost::unordered_set <long long> extraNodes;
     
-    // oneways should only be v="yes", but wiki allows the other two as well
-    typedef std::vector <std::string> strvec;
-    strvec oneWayList;
-    oneWayList.push_back ("k=\"oneway\" v=\"yes");
-    oneWayList.push_back ("k=\"oneway\" v=\"0");
-    oneWayList.push_back ("k=\"oneway\" v=\"true");
-
     while (getline (in_file, linetxt, '\n'))
     {
         if (linetxt.find ("<way") != std::string::npos)
