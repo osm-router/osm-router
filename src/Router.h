@@ -251,6 +251,7 @@ class Ways
                             std::endl;
 
                 writeDMat ();
+                gCompact.clear ();
             }
         }
     }
