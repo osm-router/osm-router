@@ -7,4 +7,4 @@ ADD_DEFINITIONS(
 set(SOURCES src/Router.c++)
 
 add_executable(router ${SOURCES})
-target_link_libraries(router boost_program_options)
+target_link_libraries(router boost_program_options boost_filesystem boost_system)
