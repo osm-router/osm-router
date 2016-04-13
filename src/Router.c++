@@ -45,6 +45,7 @@
 
 int main(int argc, char *argv[]) {
     std::string city;
+    float stdDev;
 
     try {
         boost::program_options::options_description generic("Generic options");
@@ -57,6 +58,8 @@ int main(int argc, char *argv[]) {
         config.add_options()
             ("city,c", boost::program_options::value <std::string> 
                 (&city)->default_value ("london"), "city")
+            ("stdDev,s", boost::program_options::value <float>
+                (&stdDev)->default_value (0), "standard deviation of edge weights")
             ;
 
         boost::program_options::options_description cmdline_options;
@@ -94,7 +97,7 @@ int main(int argc, char *argv[]) {
     else if (city.substr (0, 2) == "ny")
         city = "nyc";
 
-    Ways ways (city);
+    Ways ways (city, stdDev);
 };
 
 
@@ -565,12 +568,12 @@ int Ways::readAllWays ()
  ************************************************************************
  ************************************************************************/
 
-int Ways::readCompactWays ()
+int Ways::readCompactWays (float stdDev)
 {
     bool inBBox, inway = false, highway = false, oneway;
     int ipos, id0, id1, nodeCount = 0, nways = 0;
     long long node;
-    float d, weight;
+    float d, weight, tempWeight;
     umapPair_Itr umapitr;
     boost::unordered_set <long long> nodeList;
     std::vector <long long> waynodes;
@@ -669,6 +672,22 @@ int Ways::readCompactWays ()
                             oneEdge.weight = FLOAT_MAX;
                         else
                             oneEdge.weight = oneEdge.dist / weight;
+                            /*
+                             * A normally distributed random factor with mean 0
+                             * and a user defined standard deviation is added to
+                             * the weight. If this results in a negative edge
+                             * weight, a new factor is calculated.
+                             */
+                            std::random_device rd;
+                            std::mt19937 mTwister (rd ());
+                            std::normal_distribution<> distribution (0, stdDev);
+                            tempWeight = oneEdge.weight + distribution (mTwister);
+                            while (tempWeight < 0)
+                            {
+                                tempWeight = oneEdge.weight + distribution (mTwister);
+                            }
+                            oneEdge.weight = tempWeight;
+
                         boost::add_edge (id0, id1, oneEdge, gCompact);
                         if (!oneway)
                             boost::add_edge(id1, id0, oneEdge, gCompact);
