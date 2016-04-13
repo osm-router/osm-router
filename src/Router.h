@@ -173,7 +173,7 @@ class Ways
     std::vector <RoutingPoint> RoutingPointsList;
     std::vector <float> dists;
     std::vector <bool> idDone; // TODO: DELETE!
-    Ways (std::string str)
+    Ways (std::string str, float stdDev)
         : _city (str)
     {
         tempstr = _city;
@@ -221,7 +221,7 @@ class Ways
                 // gFull is no longer needed, so can be destroyed
                 gFull.clear ();
 
-                err = readCompactWays ();
+                err = readCompactWays (stdDev);
                 err = remapRoutingPoints ();
 
                 std::cout << "Getting distances between routing points";
@@ -251,6 +251,7 @@ class Ways
                             std::endl;
 
                 writeDMat ();
+                gCompact.clear ();
             }
         }
     }
@@ -299,7 +300,7 @@ class Ways
     int getConnected ();
     int readRoutingPoints ();
     int remapRoutingPoints ();
-    int readCompactWays ();
+    int readCompactWays (float stdDev);
     int dijkstra (long long fromNode);
     void writeDMat ();
 
