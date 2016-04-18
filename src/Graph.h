@@ -182,7 +182,7 @@ class Ways
         std::cout << "---" << tempstr << "---" << std::endl;
         osmFile = osmDir + "planet-" + _city + ".osm";
 
-        profileName = "profile.cfg";
+        profileName = "../profile.cfg";
         setProfile (profileName.c_str ());
 
         err = getBBox ();
@@ -217,6 +217,13 @@ class Ways
 
 void Ways::setProfile (const std::string& profileName)
 {
+    /*
+     * Profiles serve no quantiative purpose here, but they do allow a
+     * convenient way to specify what kinds of highways should be included in
+     * the graph, for which it is just as easy to read the std::pair of tag and
+     * weighting. This version of the function nevertheless allows for reading
+     * just a list of tags without values.
+     */
     int ipos;
     float value;
     std::string line, field;
