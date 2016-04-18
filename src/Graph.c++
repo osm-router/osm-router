@@ -156,6 +156,38 @@ int Ways::getBBox ()
     return 0;
 }; // end function getBBox
 
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                            READOVERPASS                            **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+std::string Ways::readOverpass ()
+{
+    const std::string key = "['highway']",
+                url_base = "http://overpass-api.de/api/interpreter?data=";
+    std::stringstream bbox, query;
+
+    bbox << "";
+    bbox << "(" << latmin << "," << lonmin << "," << 
+        latmax << "," << lonmax << ")";
+
+    query << "";
+    query << "(node" << key << bbox << ";way" << key << bbox <<
+                    ";rel" << key << bbox << ";";
+    query << query << url_base << query << ");(._;>;);out;";
+
+    //std::string str = ss.str ();
+    //std::cout << str.c_str () << std::endl;
+
+    CURLplusplus client;
+    std::string x = client.Get (query.str().c_str ());
+
+    return 0;
+}; // end function readOverpass
+
 
 /************************************************************************
  ************************************************************************
