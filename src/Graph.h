@@ -1,6 +1,6 @@
 /***************************************************************************
  *  Project:    osm-router
- *  File:       Router.h
+ *  File:       Graph.h
  *  Language:   C++
  *
  *  osm-router is free software: you can redistribute it and/or modify it
@@ -173,7 +173,7 @@ class Ways
     std::vector <RoutingPoint> RoutingPointsList;
     std::vector <float> dists;
     std::vector <bool> idDone; // TODO: DELETE!
-    Ways (std::string str, float stdDev)
+    Ways (std::string str)
         : _city (str)
     {
         tempstr = _city;
@@ -182,83 +182,21 @@ class Ways
         std::cout << "---" << tempstr << "---" << std::endl;
         osmFile = osmDir + "planet-" + _city + ".osm";
 
-        boost::filesystem::path profiles (profileDir);
-        boost::filesystem::directory_iterator it (profiles), eod;
+        profileName = "profile.cfg";
+        setProfile (profileName.c_str ());
 
-        //count weighting profiles
+        err = getBBox ();
+        err = readNodes();
+        err = readAllWays ();
+        err = getConnected ();
 
-        for (boost::filesystem::directory_iterator itCount (profiles);
-        itCount != boost::filesystem::directory_iterator (); itCount++)
-        {
-            numWeightingProfiles++;
-        }
-
-        BOOST_FOREACH (boost::filesystem::path const &p, std::make_pair (it, eod))
-        {
-            if (is_regular_file(p))
-            {
-                countWeightingProfiles++;
-                profileName = p.stem ().c_str ();
-                profileName = profileName.substr (profileName.find ("_") + 1);
-                std::cout << "Routing weight profile: " << profileName << " ("
-                    << countWeightingProfiles << "/" << numWeightingProfiles
-                    << ")" << std::endl;
-
-                setProfile (profileName.c_str ());
-
-                // These operations are only called once
-                if (firstRun)
-                {
-                    firstRun = false;
-                    err = getBBox ();
-                    err = readNodes();
-                    err = readAllWays ();
-                    err = getConnected ();
-                    err = readRoutingPoints ();
-                    distMat.resize (RoutingPointsList.size (), RoutingPointsList.size ());
-                }
-
-                // gFull is no longer needed, so can be destroyed
-                gFull.clear ();
-
-                err = readCompactWays (stdDev);
-                err = remapRoutingPoints ();
-
-                std::cout << "Getting distances between routing points";
-                std::cout.flush ();
-                count = 0;
-                idDone.resize (RoutingPointsList.size ());
-                for (int i=0; i<RoutingPointsList.size (); i++)
-                    idDone [i] = false;
-                for (std::vector<RoutingPoint>::iterator itr=RoutingPointsList.begin();
-                        itr != RoutingPointsList.end(); itr++)
-                {
-                    err = dijkstra (itr->nodeIndex);
-                    assert (dists.size () == RoutingPointsList.size ());
-                    std::cout << "\rGetting distances between routing points " <<
-                        count << "/" << RoutingPointsList.size () << " ";
-                    std::cout.flush ();
-                    count++;
-                }
-                std::cout << "\rGetting distances between routing points " <<
-                    RoutingPointsList.size () << "/" << RoutingPointsList.size
-                    () << std::endl;
-                std::cout << "done." << std::endl;
-
-                for (int i=0; i<RoutingPointsList.size (); i++)
-                    if (!idDone [i])
-                        std::cout << "ERROR: ID#" << i << " was not done" <<
-                            std::endl;
-
-                writeDMat ();
-                gCompact.clear ();
-            }
-        }
+        // gFull is no longer needed, so can be destroyed
+        gFull.clear ();
+        err = readCompactWays ();
+        gCompact.clear ();
     }
     ~Ways ()
     {
-        RoutingPointsList.resize (0);
-        dists.resize (0);
     }
 
     std::string returnDirName () { return _dirName; }
@@ -266,7 +204,8 @@ class Ways
 
     void setProfile (const std::string& profileName)
     {
-        const std::string configfile = "../data/weighting_profiles/profile_" + profileName + ".cfg"; 
+        const std::string configfile = "../data/weighting_profiles/profile_" + \
+                                        profileName + ".cfg"; 
         int ipos;
         float value;
         std::string line, field;
@@ -300,9 +239,7 @@ class Ways
     int getConnected ();
     int readRoutingPoints ();
     int remapRoutingPoints ();
-    int readCompactWays (float stdDev);
-    int dijkstra (long long fromNode);
-    void writeDMat ();
+    int readCompactWays ();
 
     float calcDist (std::vector <float> x, std::vector <float> y);
     long long nearestNode (float lon0, float lat0);

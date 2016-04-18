@@ -1,6 +1,6 @@
 /***************************************************************************
  *  Project:    osm-router
- *  File:       Router.c++
+ *  File:       Graph.c++
  *  Language:   C++
  *
  *  osm-router is free software: you can redistribute it and/or modify it
@@ -33,7 +33,7 @@
  *  Compiler Options:   -std=c++11 -lboost_program_options 
  ***************************************************************************/
 
-#include "Router.h"
+#include "Graph.h"
 
 /************************************************************************
  ************************************************************************
@@ -45,7 +45,6 @@
 
 int main(int argc, char *argv[]) {
     std::string city;
-    float stdDev;
 
     try {
         boost::program_options::options_description generic("Generic options");
@@ -58,8 +57,6 @@ int main(int argc, char *argv[]) {
         config.add_options()
             ("city,c", boost::program_options::value <std::string> 
                 (&city)->default_value ("london"), "city")
-            ("stdDev,s", boost::program_options::value <float>
-                (&stdDev)->default_value (0), "standard deviation of edge weights")
             ;
 
         boost::program_options::options_description cmdline_options;
@@ -97,7 +94,7 @@ int main(int argc, char *argv[]) {
     else if (city.substr (0, 2) == "ny")
         city = "nyc";
 
-    Ways ways (city, stdDev);
+    Ways ways (city);
 };
 
 
@@ -561,7 +558,7 @@ int Ways::readAllWays ()
  ************************************************************************
  ************************************************************************/
 
-int Ways::readCompactWays (float stdDev)
+int Ways::readCompactWays ()
 {
     bool inBBox, inway = false, highway = false, oneway;
     int ipos, id0, id1, nodeCount = 0, nways = 0;
@@ -661,25 +658,6 @@ int Ways::readCompactWays (float stdDev)
                             id1 = (*nodeNames.find (node)).second;
 
                         oneEdge.dist = calcDist (lons, lats);
-                        if (weight == 0.0)
-                            oneEdge.weight = FLOAT_MAX;
-                        else
-                            oneEdge.weight = oneEdge.dist / weight;
-                            /*
-                             * A normally distributed random factor with mean 0
-                             * and a user defined standard deviation is added to
-                             * the weight. If this results in a negative edge
-                             * weight, a new factor is calculated.
-                             */
-                            std::random_device rd;
-                            std::mt19937 mTwister (rd ());
-                            std::normal_distribution<> distribution (0, stdDev);
-                            tempWeight = oneEdge.weight + distribution (mTwister);
-                            while (tempWeight < 0)
-                            {
-                                tempWeight = oneEdge.weight + distribution (mTwister);
-                            }
-                            oneEdge.weight = tempWeight;
 
                         boost::add_edge (id0, id1, oneEdge, gCompact);
                         if (!oneway)
@@ -1052,114 +1030,3 @@ int Ways::remapRoutingPoints ()
 
     return 0;
 }
-
-/************************************************************************
- ************************************************************************
- **                                                                    **
- **                              DIJKSTRA                              **
- **                                                                    **
- ************************************************************************
- ************************************************************************/
-
-int Ways::dijkstra (long long fromNode)
-{
-    std::vector<Vertex> predecessors (boost::num_vertices(gCompact)); 
-    std::vector<Weight> distances (boost::num_vertices(gCompact)); 
-
-    boost::property_map< Graph_t, long long bundled_vertex_type::* >::type 
-        vertex_id = boost::get(&bundled_vertex_type::id, gCompact);
-    boost::property_map< Graph_t, float bundled_vertex_type::* >::type 
-        vertex_lat = boost::get(&bundled_vertex_type::lat, gCompact);
-    boost::property_map< Graph_t, float bundled_vertex_type::* >::type 
-        vertex_lon = boost::get(&bundled_vertex_type::lon, gCompact);
-
-    auto p_map = boost::make_iterator_property_map
-        (&predecessors[0], boost::get(boost::vertex_index, gCompact));
-    auto d_map = boost::make_iterator_property_map
-        (&distances[0], boost::get(boost::vertex_index, gCompact));
-    auto w_map = boost::get(&bundled_edge_type::weight, gCompact); 
-
-    int start = vertex (fromNode, gCompact);
-    boost::dijkstra_shortest_paths(gCompact, start,
-            weight_map(w_map). 
-            predecessor_map(p_map).
-            distance_map(d_map));
-
-    // Check that all routing points have been reached
-    int nvalid = 0;
-    for (std::vector <RoutingPoint>::iterator itr = RoutingPointsList.begin();
-            itr != RoutingPointsList.end (); itr++)
-        if (distances [(*itr).nodeIndex] < FLOAT_MAX)
-            nvalid++;
-    std::cout << "nvalid = " << nvalid << " / " << RoutingPointsList.size ();
-    assert (nvalid == RoutingPointsList.size ());
-
-    // Trace back from each routing point 
-    Vertex v0, v;
-    dists.resize (0);
-    float dist;
-
-    for (std::vector <RoutingPoint>::iterator itr = RoutingPointsList.begin();
-            itr != RoutingPointsList.end (); itr++)
-    {
-        v0 = itr->nodeIndex;
-        v = v0;
-        dist = 0.0;
-        for (Vertex u = p_map[v]; u != v; v = u, u = p_map[v]) 
-        {
-            std::pair<Graph_t::edge_descriptor, bool> edgePair = 
-                boost::edge(u, v, gCompact);
-            Graph_t::edge_descriptor edge = edgePair.first;
-            dist += boost::get (&bundled_edge_type::dist, gCompact, edge);
-        }
-        dists.push_back (dist);
-    }
-
-    assert (dists.size () == RoutingPointsList.size ());
-    /*
-     * First have to match long long fromNode to index# within
-     * RoutingPointsList.  There are cases where two routing points match to
-     * same OSM node, so distmats have to be filled for all such multiples
-     */
-    std::vector <int> id;
-    id.resize (0);
-    for (int i=0; i<RoutingPointsList.size(); i++)
-        if (RoutingPointsList [i].nodeIndex == fromNode)
-            id.push_back (i);
-    assert (id.size () > 0);
-    for (int i=0; i<id.size (); i++)
-        idDone [id[i]] = true;
-
-    for (int i=0; i<RoutingPointsList.size (); i++)
-        for (std::vector <int>::iterator itr=id.begin(); itr != id.end(); itr++)
-            distMat (*itr, i) = dists [i];
-
-    return 0;
-}
-
-
-/************************************************************************
- ************************************************************************
- **                                                                    **
- **                             WRITEDMAT                              **
- **                                                                    **
- ************************************************************************
- ************************************************************************/
-
-void Ways::writeDMat ()
-{
-    std::string fname = "RoutingPointDistsMat-" + getCityProfile () + ".csv";
-
-    std::ofstream out_file;
-
-    out_file.open (fname, std::ios::out);
-
-    for (int i=0; i<distMat.size1(); i++)
-    {
-        for (int j=0; j<(distMat.size2() - 1); j++)
-            out_file << distMat (i, j) << ", ";
-        out_file << distMat (i, distMat.size2() - 1) << std::endl;
-    }
-
-    out_file.close ();
-};
