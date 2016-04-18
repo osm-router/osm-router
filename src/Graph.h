@@ -202,47 +202,44 @@ class Ways
     std::string returnDirName () { return _dirName; }
     std::string returnCity () { return _city;   }
 
-    void setProfile (const std::string& profileName)
-    {
-        const std::string configfile = "../data/weighting_profiles/profile_" + \
-                                        profileName + ".cfg"; 
-        int ipos;
-        float value;
-        std::string line, field;
-        std::ifstream in_file;
-
-        profile.resize (0);
-
-        in_file.open (configfile.c_str (), std::ifstream::in);
-        assert (!in_file.fail ());
-
-        while (!in_file.eof ())
-        {
-            getline (in_file, line, '\n');
-            if (!in_file.eof ())
-            {
-                ipos = line.find (',');
-                field = line.substr (0, ipos);
-                line = line.substr (ipos + 1, line.length () - ipos - 1);
-                value = atof (line.c_str ());
-
-                profile.push_back (std::make_pair (field, value));
-            }
-        }
-        in_file.close ();
-    };
-
+    void setProfile (const std::string& profileName);
     int getBBox ();
     int readNodes ();
     int readTerminalNodes ();
     int readAllWays ();
     int getConnected ();
-    int readRoutingPoints ();
-    int remapRoutingPoints ();
     int readCompactWays ();
 
     float calcDist (std::vector <float> x, std::vector <float> y);
-    long long nearestNode (float lon0, float lat0);
     std::string getCity () { return _city; }
     std::string getCityProfile () { return _city + "_" + profileName;  }
 };
+
+void Ways::setProfile (const std::string& profileName)
+{
+    int ipos;
+    float value;
+    std::string line, field;
+    std::ifstream in_file;
+
+    profile.resize (0);
+
+    in_file.open (profileName.c_str (), std::ifstream::in);
+    assert (!in_file.fail ());
+
+    while (!in_file.eof ())
+    {
+        getline (in_file, line, '\n');
+        if (!in_file.eof ())
+        {
+            ipos = line.find (',');
+            field = line.substr (0, ipos);
+            line = line.substr (ipos + 1, line.length () - ipos - 1);
+            value = atof (line.c_str ());
+
+            profile.push_back (std::make_pair (field, value));
+        }
+    }
+    in_file.close ();
+};
+
