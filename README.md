@@ -1,4 +1,4 @@
-# osm-router [![Build Status](https://travis-ci.org/karpfen/osm-router.svg?branch=master)](https://travis-ci.org/karpfen/osm-router)
+# osm-router [![Build Status](https://travis-ci.org/osm-router/osm-router.svg?branch=master)](https://travis-ci.org/osm-router/osm-router)
 
 A very fast many-to-many OpenStreetMap router based on C++ boost::graph.  Designed to work in a designated area, and so reads data from a
 planet.osm file. Hard-coded at present to read data for greater London and greater NYC, and to route between points given in
