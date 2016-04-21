@@ -10,7 +10,7 @@ ADD_DEFINITIONS(
     #-DCURL_STATICLIB
 )
 set(SOURCES_GRAPH src/Graph.c++)
-set(SOURCES_ROUTER src/Graph.c++)
+set(SOURCES_ROUTER src/Router.c++)
 
 add_executable(${TARGET_GRAPH} ${SOURCES_GRAPH})
 add_executable(${TARGET_ROUTER} ${SOURCES_ROUTER})
