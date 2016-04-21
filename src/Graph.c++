@@ -179,9 +179,6 @@ std::string Ways::readOverpass ()
                     ";rel" << key << bbox << ";";
     query << query << url_base << query << ");(._;>;);out;";
 
-    //std::string str = ss.str ();
-    //std::cout << str.c_str () << std::endl;
-
     CURLplusplus client;
     std::string x = client.Get (query.str().c_str ());
 

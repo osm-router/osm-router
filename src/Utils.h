@@ -35,6 +35,8 @@
 
 #include <sys/ioctl.h> // for console width: Linux only!
 #include <fstream>
+#include <sstream>
+#include <iostream>
 #include <assert.h>
 
 #include <boost/config.hpp>
