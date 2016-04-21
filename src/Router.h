@@ -221,7 +221,12 @@ class Ways
                 // gFull is no longer needed, so can be destroyed
                 gFull.clear ();
 
-                err = readCompactWays (stdDev);
+                // initialize number generator for randomized edge weighting
+                std::random_device rd;
+                std::mt19937 mTwister (rd ());
+                std::normal_distribution<> norm_dist (0, stdDev);
+
+                err = readCompactWays (mTwister, norm_dist);
                 err = remapRoutingPoints ();
 
                 std::cout << "Getting distances between routing points";
@@ -272,7 +277,7 @@ class Ways
     int getConnected ();
     int readRoutingPoints ();
     int remapRoutingPoints ();
-    int readCompactWays (float stdDev);
+    int readCompactWays (std::mt19937& mTwister, std::normal_distribution<>& norm_dist);
     int dijkstra (long long fromNode);
     void writeDMat ();
 

@@ -561,7 +561,7 @@ int Ways::readAllWays ()
  ************************************************************************
  ************************************************************************/
 
-int Ways::readCompactWays (float stdDev)
+int Ways::readCompactWays (std::mt19937& mTwister, std::normal_distribution<>& norm_dist)
 {
     bool inBBox, inway = false, highway = false, oneway;
     int ipos, id0, id1, nodeCount = 0, nways = 0;
@@ -671,13 +671,10 @@ int Ways::readCompactWays (float stdDev)
                              * the weight. If this results in a negative edge
                              * weight, a new factor is calculated.
                              */
-                            std::random_device rd;
-                            std::mt19937 mTwister (rd ());
-                            std::normal_distribution<> distribution (0, stdDev);
-                            tempWeight = oneEdge.weight + distribution (mTwister);
+                            tempWeight = oneEdge.weight + norm_dist (mTwister);
                             while (tempWeight < 0)
                             {
-                                tempWeight = oneEdge.weight + distribution (mTwister);
+                                tempWeight = oneEdge.weight + norm_dist (mTwister);
                             }
                             oneEdge.weight = tempWeight;
 
