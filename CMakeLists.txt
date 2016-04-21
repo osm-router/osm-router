@@ -12,14 +12,14 @@ ADD_DEFINITIONS(
 set(SOURCES_GRAPH src/Graph.c++)
 set(SOURCES_ROUTER src/Graph.c++)
 
-#add_executable(${TARGET_GRAPH} ${SOURCES_GRAPH})
+add_executable(${TARGET_GRAPH} ${SOURCES_GRAPH})
 add_executable(${TARGET_ROUTER} ${SOURCES_ROUTER})
 
 find_path (LIBCURL_INCLUDE_DIR curl/curl.h HINTS ${LIBCURL_DIR}/include)
 include_directories(${LIBCURL_INCLUDE_DIR})
-#add_dependencies(${TARGET_GRAPH} libcurl)
+add_dependencies(${TARGET_GRAPH} libcurl)
 
 set (LIBS ${LIBS} boost_program_options boost_filesystem boost_system)
-#set (LIBS ${LIBS} curl)
+set (LIBS ${LIBS} curl)
 target_link_libraries(${TARGET_ROUTER} ${LIBS})
-#target_link_libraries(${TARGET_GRAPH} ${LIBS})
+target_link_libraries(${TARGET_GRAPH} ${LIBS})
