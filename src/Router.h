@@ -226,7 +226,7 @@ class Ways
                 std::mt19937 mTwister (rd ());
                 std::normal_distribution<> norm_dist (0, stdDev);
 
-                err = readCompactWays (mTwister, norm_dist);
+                err = readCompactWays (&mTwister, norm_dist);
                 err = remapRoutingPoints ();
 
                 std::cout << "Getting distances between routing points";
@@ -277,7 +277,7 @@ class Ways
     int getConnected ();
     int readRoutingPoints ();
     int remapRoutingPoints ();
-    int readCompactWays (std::mt19937& mTwister, std::normal_distribution<>& norm_dist);
+    int readCompactWays (std::mt19937* mTwister, std::normal_distribution<> norm_dist);
     int dijkstra (long long fromNode);
     void writeDMat ();
 
