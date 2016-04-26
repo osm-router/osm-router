@@ -172,7 +172,6 @@ class Ways
     bool firstRun = true;
     std::vector <RoutingPoint> RoutingPointsList;
     std::vector <float> dists;
-    std::vector <bool> idDone; // TODO: DELETE!
     Ways (std::string str, float stdDev)
         : _city (str)
     {
@@ -232,9 +231,6 @@ class Ways
                 std::cout << "Getting distances between routing points";
                 std::cout.flush ();
                 count = 0;
-                idDone.resize (RoutingPointsList.size ());
-                for (int i=0; i<RoutingPointsList.size (); i++)
-                    idDone [i] = false;
                 for (std::vector<RoutingPoint>::iterator itr=RoutingPointsList.begin();
                         itr != RoutingPointsList.end(); itr++)
                 {
@@ -249,11 +245,6 @@ class Ways
                     RoutingPointsList.size () << "/" << RoutingPointsList.size
                     () << std::endl;
                 std::cout << "done." << std::endl;
-
-                for (int i=0; i<RoutingPointsList.size (); i++)
-                    if (!idDone [i])
-                        std::cout << "ERROR: ID#" << i << " was not done" <<
-                            std::endl;
 
                 writeDMat ();
                 gCompact.clear ();

@@ -1124,8 +1124,6 @@ int Ways::dijkstra (long long fromNode)
         if (RoutingPointsList [i].nodeIndex == fromNode)
             id.push_back (i);
     assert (id.size () > 0);
-    for (int i=0; i<id.size (); i++)
-        idDone [id[i]] = true;
 
     for (int i=0; i<RoutingPointsList.size (); i++)
         for (std::vector <int>::iterator itr=id.begin(); itr != id.end(); itr++)
