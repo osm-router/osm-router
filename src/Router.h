@@ -225,7 +225,7 @@ class Ways
                 // gFull is no longer needed, so can be destroyed
                 gFull.clear ();
 
-                err = readCompactWays (&mTwister, norm_dist);
+                err = readCompactWays (&mTwister, &norm_dist);
                 err = remapRoutingPoints ();
 
                 std::cout << "Getting distances between routing points";
@@ -268,7 +268,7 @@ class Ways
     int getConnected ();
     int readRoutingPoints ();
     int remapRoutingPoints ();
-    int readCompactWays (std::mt19937* mTwister, std::normal_distribution<> norm_dist);
+    int readCompactWays (std::mt19937* mTwister, std::normal_distribution<>* norm_dist);
     int dijkstra (long long fromNode);
     void writeDMat ();
 

@@ -561,7 +561,7 @@ int Ways::readAllWays ()
  ************************************************************************
  ************************************************************************/
 
-int Ways::readCompactWays (std::mt19937 *mTwister, std::normal_distribution<> norm_dist)
+int Ways::readCompactWays (std::mt19937 *mTwister, std::normal_distribution<> *pNorm_dist)
 {
     bool inBBox, inway = false, highway = false, oneway;
     int ipos, id0, id1, nodeCount = 0, nways = 0;
@@ -665,18 +665,20 @@ int Ways::readCompactWays (std::mt19937 *mTwister, std::normal_distribution<> no
                             oneEdge.weight = FLOAT_MAX;
                         else
                             oneEdge.weight = oneEdge.dist / weight;
-                            /*
-                             * A normally distributed random factor with mean 0
-                             * and a user defined standard deviation is added to
-                             * the weight. If this results in a negative edge
-                             * weight, a new factor is calculated.
-                             */
+
+                        /*
+                         * A normally distributed random factor with mean 0
+                         * and a user defined standard deviation is added to
+                         * the weight. If this results in a negative edge
+                         * weight, a new factor is calculated.
+                         */
+                        std::normal_distribution<> norm_dist = *pNorm_dist;
+                        tempWeight = oneEdge.weight + norm_dist (*mTwister);
+                        while (tempWeight < 0)
+                        {
                             tempWeight = oneEdge.weight + norm_dist (*mTwister);
-                            while (tempWeight < 0)
-                            {
-                                tempWeight = oneEdge.weight + norm_dist (*mTwister);
-                            }
-                            oneEdge.weight = tempWeight;
+                        }
+                        oneEdge.weight = tempWeight;
 
                         boost::add_edge (id0, id1, oneEdge, gCompact);
                         if (!oneway)
@@ -760,7 +762,7 @@ float Ways::calcDist (std::vector <float> x, std::vector <float> y)
         y0 = y1;
         x1 = x[i];
         y1 = y[i];
-        
+
         xd = (x1 - x0) * PI / 180.0;
         yd = (y1 - y0) * PI / 180.0;
 
@@ -790,10 +792,10 @@ int Ways::getConnected ()
 
     // Then store component info in vertices
     /*
-    typedef boost::graph_traits <Graph_t>::vertex_iterator viter;
-    std::pair <viter, viter> vp;
-    for (vp = vertices(gFull); vp.first != vp.second; ++vp.first)
-        vertex_component [*vp.first] = compvec [*vp.first];
+       typedef boost::graph_traits <Graph_t>::vertex_iterator viter;
+       std::pair <viter, viter> vp;
+       for (vp = vertices(gFull); vp.first != vp.second; ++vp.first)
+       vertex_component [*vp.first] = compvec [*vp.first];
      */
 
     // Alternative:
@@ -805,13 +807,13 @@ int Ways::getConnected ()
 
     // Optional filtering of component = 0:
     /*
-    in_component_0 <VertMap> filter (boost::get 
-        (&bundled_vertex_type::component, gFull));
-    boost::filtered_graph <Graph, in_component_0 <VertMap> > fg (g, filter);
+       in_component_0 <VertMap> filter (boost::get 
+       (&bundled_vertex_type::component, gFull));
+       boost::filtered_graph <Graph, in_component_0 <VertMap> > fg (g, filter);
     // Next lines reveal filtering does not actually reduce the graph
     auto vsfg = boost::vertices (fg);
     for (auto vit = vsfg.first; vit != vsfg.second; ++vit)
-        std::cout << *vit << std::endl;
+    std::cout << *vit << std::endl;
      */
 
     return num;
