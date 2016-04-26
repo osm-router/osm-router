@@ -258,12 +258,11 @@ class Ways
     }
 
     std::string returnDirName () { return _dirName; }
-    std::string returnCity () { return _city;   }
+    std::string returnCity () { return _city; }
 
     void setProfile (const std::string& profileName);
     int getBBox ();
     int readNodes ();
-    int readTerminalNodes ();
     int readAllWays ();
     int getConnected ();
     int readRoutingPoints ();
@@ -307,4 +306,3 @@ void Ways::setProfile (const std::string& profileName)
     }
     in_file.close ();
 };
-
