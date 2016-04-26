@@ -573,7 +573,8 @@ int Ways::readCompactWays (std::mt19937 *mTwister, std::normal_distribution<> *p
     std::vector <float> lats, lons;
     std::string linetxt, tempstr, highwayType;
     std::ifstream in_file;
-    
+    std::normal_distribution<> norm_dist = *pNorm_dist;
+
     in_file.open (osmFile.c_str (), std::ifstream::in);
     assert (!in_file.fail ());
     in_file.clear ();
@@ -672,7 +673,6 @@ int Ways::readCompactWays (std::mt19937 *mTwister, std::normal_distribution<> *p
                          * the weight. If this results in a negative edge
                          * weight, a new factor is calculated.
                          */
-                        std::normal_distribution<> norm_dist = *pNorm_dist;
                         tempWeight = oneEdge.weight + norm_dist (*mTwister);
                         while (tempWeight < 0)
                         {
