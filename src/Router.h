@@ -192,6 +192,11 @@ class Ways
             numWeightingProfiles++;
         }
 
+        // initialize number generator for randomized edge weighting
+        std::random_device rd;
+        std::mt19937 mTwister (rd ());
+        std::normal_distribution<> norm_dist (0, stdDev);
+
         BOOST_FOREACH (boost::filesystem::path const &p, std::make_pair (it, eod))
         {
             if (is_regular_file(p))
@@ -219,11 +224,6 @@ class Ways
 
                 // gFull is no longer needed, so can be destroyed
                 gFull.clear ();
-
-                // initialize number generator for randomized edge weighting
-                std::random_device rd;
-                std::mt19937 mTwister (rd ());
-                std::normal_distribution<> norm_dist (0, stdDev);
 
                 err = readCompactWays (&mTwister, norm_dist);
                 err = remapRoutingPoints ();
