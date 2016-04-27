@@ -64,10 +64,6 @@
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/property_map/property_map.hpp>
 
-#include <boost/iostreams/filtering_streambuf.hpp>
-#include <boost/iostreams/copy.hpp>
-#include <boost/iostreams/filter/bzip2.hpp>
-
 
 typedef std::pair <double, double> ddPair;
 
@@ -286,7 +282,7 @@ void Ways::setProfile (const std::string& profileName)
     std::string line, field;
     std::ifstream in_file;
 
-    profile.resize (0);
+    Ways::profile.resize (0);
 
     in_file.open (configfile.c_str (), std::ifstream::in);
     assert (!in_file.fail ());
@@ -301,7 +297,7 @@ void Ways::setProfile (const std::string& profileName)
             line = line.substr (ipos + 1, line.length () - ipos - 1);
             value = atof (line.c_str ());
 
-            profile.push_back (std::make_pair (field, value));
+            Ways::profile.push_back (std::make_pair (field, value));
         }
     }
     in_file.close ();
