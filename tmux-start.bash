@@ -33,4 +33,6 @@ tmux send-keys -t $SESSION:3 'vim Makefile' C-m
 tmux split-window -v
 tmux select-pane -t 0
 
+tmux select-window -t $SESSION:1
+
 tmux attach -t $SESSION
