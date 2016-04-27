@@ -41,55 +41,7 @@
 int main(int argc, char *argv[]) {
     std::string city;
 
-    try {
-        boost::program_options::options_description generic("Generic options");
-        generic.add_options()
-            ("version,v", "print version std::string")
-            ("help", "produce help message")    
-            ;
-
-        boost::program_options::options_description config("Configuration");
-        config.add_options()
-            ("city,c", boost::program_options::value <std::string> 
-                (&city)->default_value ("london"), "city")
-            ;
-
-        boost::program_options::options_description cmdline_options;
-        cmdline_options.add(generic).add(config);
-
-        boost::program_options::options_description visible("Allowed options");
-        visible.add(generic).add(config);
-
-        boost::program_options::variables_map vm;
-        store(boost::program_options::command_line_parser(argc, argv).
-                options(cmdline_options).run(), vm);
-
-        notify(vm);
-
-        if (vm.count("help")) {
-            std::cout << visible << std::endl;
-            return 0;
-        }
-
-        if (vm.count("version")) {
-            std::cout << "osm-router, version 1.0" << std::endl;
-            return 0;
-        }
-
-    }
-    catch(std::exception& e)
-    {
-        std::cout << e.what() << std::endl;
-        return 1;
-    }    
-
-    std::transform (city.begin(), city.end(), city.begin(), ::tolower);
-    if (city.substr (0, 2) == "lo")
-        city = "london";
-    else if (city.substr (0, 2) == "ny")
-        city = "nyc";
-
-    Xml xml (city);
+    Xml xml;
 
     return 0;
 };
@@ -102,15 +54,13 @@ int main(int argc, char *argv[]) {
  ************************************************************************
  ************************************************************************/
 
-int Xml::getBBox ()
+void Xml::getBBox ()
 {
     // TODO: Copy old getBBox from Graph.c++
     lonmin = -0.12;
     lonmax = -0.115;
     latmin = 51.515;
     latmax = 51.52;
-
-    return 0;
 }; // end function getBBox
 
 
@@ -148,12 +98,12 @@ std::string Xml::readOverpass ()
 /************************************************************************
  ************************************************************************
  **                                                                    **
- **                              READNODES                             **
+ **                              PARSEXML                              **
  **                                                                    **
  ************************************************************************
  ************************************************************************/
 
-Ways Xml::readNodes ( std::string & is )
+void Xml::parseXML ( std::string & is )
 {
     // populate tree structure pt
     using boost::property_tree::ptree;
@@ -161,68 +111,127 @@ Ways Xml::readNodes ( std::string & is )
     std::stringstream istream (is, std::stringstream::in);
     read_xml (istream, pt);
 
-    Ways ways;
-
     // std::cout << is << std::endl; // The overpass XML data
-    traverse (pt);
-
-    return ways;
+    traverseXML (pt);
 }
 
-void Xml::traverse (const boost::property_tree::ptree& pt)
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                            TRAVERSEXML                             **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+void Xml::traverseXML (const boost::property_tree::ptree& pt)
 {
+    int tempi;
+    Way way;
+    Node node;
+
     for (boost::property_tree::ptree::const_iterator it = pt.begin ();
             it != pt.end (); ++it)
     {
-        //std::cout << it->first << ": " << 
-        //    it->second.get_value<std::string>() << std::endl;
         if (it->first == "node")
         {
-            std::cout << "-----";
-            traverseNode (it->second);
+            node = traverseNode (it->second, node);
+            nodes.push_back (node);
+
+            // ------------ just text output guff ---------------
+            /*
+            std::cout << "-----Node ID = " << node.id << " (" <<
+                node.lat << ", " << node.lon << ")" << std::endl;
+            */
         }
         if (it->first == "way")
         {
-            std::cout << "-----";
-            traverseWay (it->second);
+            way.key.resize (0);
+            way.value.resize (0);
+            way.nodes.resize (0);
+
+            way = traverseWay (it->second, way);
+            assert (way.key.size () == way.value.size ());
+            // get name from key-value pairs
+            for (int i=0; i<way.key.size (); i++)
+                if (way.key [i] == "name")
+                {
+                    way.name = way.value [i];
+                    tempi = i;
+                    break;
+                }
+            way.key.erase (way.key.begin() + tempi);
+            way.value.erase (way.value.begin() + tempi);
+            ways.push_back (way);
+
+            // ------------ just text output guff ---------------
+            /*
+            std::cout << "-----Way ID = " << way.id << std::endl;
+            std::cout << "nodes = (";
+            for (int i=0; i<way.nodes.size (); i++)
+                std::cout << way.nodes [i] << ", ";
+            std::cout << ")" << std::endl;
+            for (int i=0; i<way.key.size (); i++)
+                if (way.key [i] == "name")
+                    std::cout << "NAME = " << way.value [i] << std::endl;
+                else if (way.key [i] == "highway")
+                    std::cout << "highway: " << way.value [i] << std::endl;
+            */
         } else
-            traverse (it->second);
+            traverseXML (it->second);
     }
 }
 
-void Xml::traverseWay (const boost::property_tree::ptree& pt)
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                            TRAVERSEWAY                             **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+Way Xml::traverseWay (const boost::property_tree::ptree& pt, Way way)
 {
     for (boost::property_tree::ptree::const_iterator it = pt.begin ();
             it != pt.end (); ++it)
     {
         if (it->first == "k")
-            std::cout << it->second.get_value<std::string>();
+            way.key.push_back (it->second.get_value <std::string> ());
         else if (it->first == "v")
-            std::cout << ": " << it->second.get_value<std::string>() << std::endl;
-        else if (it->first == "id" | it->first == "ref")
-            std::cout << it->first << ": " << 
-                it->second.get_value<std::string>() << std::endl;
-        traverseWay (it->second);
+            way.value.push_back (it->second.get_value <std::string> ());
+        else if (it->first == "id")
+            way.id = it->second.get_value <long long> ();
+        else if (it->first == "ref")
+            way.nodes.push_back (it->second.get_value <long long> ());
+        way = traverseWay (it->second, way);
     }
+
+    return way;
 }
 
-void Xml::traverseNode (const boost::property_tree::ptree& pt)
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                            TRAVERSENODE                            **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+Node Xml::traverseNode (const boost::property_tree::ptree& pt, Node node)
 {
     for (boost::property_tree::ptree::const_iterator it = pt.begin ();
             it != pt.end (); ++it)
     {
         if (it->first == "id")
-            std::cout << it->first << ": " << 
-                it->second.get_value<std::string>();
+            node.id = it->second.get_value <long long> ();
         else if (it->first == "lat")
-            std::cout << " (" << it->second.get_value<std::string>();
+            node.lat = it->second.get_value <float> ();
         else if (it->first == "lon")
-            std::cout << ", " << it->second.get_value<std::string>() <<
-                ")" << std::endl;
-        else if (it->first == "k")
-            std::cout << it->second.get_value<std::string>();
-        else if (it->first == "v")
-            std::cout << ": " << it->second.get_value<std::string>() << std::endl;
-        traverseNode (it->second);
+            node.lon = it->second.get_value <float> ();
+        // No other key-value pairs currently extracted for nodes
+        node = traverseNode (it->second, node);
     }
+
+    return node;
 }

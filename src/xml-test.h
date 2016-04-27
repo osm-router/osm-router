@@ -30,28 +30,28 @@
 
 
 
-#include "Utils.h"
 #include <curl/curl.h>
-
-#include <boost/filesystem.hpp>
 
 #include <vector>
 #include <string>
-#include <fstream>
-#include <locale>
 #include <boost/foreach.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
-struct ptree
+struct Node
 {
-    std::string data;                          // data associated with the node
-    std::list< std::pair<std::string, ptree> > children; // ordered list of named children
+    long long id;
+    float lat, lon;
 };
+
+typedef std::vector <Node> Nodes;
 
 struct Way
 {
-    long long waynodes;
+    long long id;
+    std::string type, name; // type is highway type (value for highway key)
+    std::vector <std::string> key, value;
+    std::vector <long long> nodes;
 };
 
 typedef std::vector <Way> Ways;
@@ -112,50 +112,36 @@ class Xml
     private:
 
     protected:
-    const std::string _city;
-    float latmin, lonmin, latmax, lonmax;
-    std::string _dirName;
+        float latmin, lonmin, latmax, lonmax;
 
     public:
-    int err, count;
-    long long node;
-    float d;
-    std::string tempstr;
-    Ways ways;
+        std::string tempstr;
+        Nodes nodes;
+        Ways ways;
 
-
-    /*
-     * The storage of nodeNames is done in readNodes, while they are then
-     * only subsequently used to replace the long long OSM numbers with
-     * corresponding ints when storing the boost::graph in the readWays
-     * routine.
-     */
-    Xml (std::string str)
-        : _city (str)
+    Xml ()
     {
-        tempstr = _city;
-        std::transform (tempstr.begin(), tempstr.end(), 
-                tempstr.begin(), ::toupper);
-
-        err = getBBox ();
-        std::cout << "downloading overpass query ... ";
+        nodes.resize (0);
+        ways.resize (0);
+        getBBox ();
+        std::cout << "Downloading overpass query ... ";
         std::cout.flush ();
         tempstr = readOverpass ();
-        std::cout << "done; processing ..." << std::endl;
-        ways = readNodes (tempstr);
+        parseXML (tempstr);
+        std::cout << "Parsed " << nodes.size () << " nodes and " << 
+            ways.size () << " ways" << std::endl;
     }
     ~Xml ()
     {
+        nodes.resize (0);
+        ways.resize (0);
     }
 
-    std::string returnDirName () { return _dirName; }
-    std::string returnCity () { return _city;   }
-
-    int getBBox ();
+    void getBBox ();
     std::string readOverpass ();
-    Ways readNodes ( std::string & is );
-    void traverse (const boost::property_tree::ptree& pt);
-    void traverseWay (const boost::property_tree::ptree& pt);
-    void traverseNode (const boost::property_tree::ptree& pt);
+    void parseXML ( std::string & is );
+    void traverseXML (const boost::property_tree::ptree& pt);
+    Way traverseWay (const boost::property_tree::ptree& pt, Way way);
+    Node traverseNode (const boost::property_tree::ptree& pt, Node node);
 };
 
