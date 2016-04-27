@@ -204,7 +204,7 @@ class Ways
                     << countWeightingProfiles << "/" << numWeightingProfiles
                     << ")" << std::endl;
 
-                setProfile (profileName.c_str ());
+                setProfile (profileName.c_str (), &profile);
 
                 // These operations are only called once
                 if (firstRun)
@@ -257,6 +257,8 @@ class Ways
     std::string returnCity () { return _city; }
 
     void setProfile (const std::string& profileName);
+    void setProfile (const std::string& profileName, std::vector <ProfilePair>*
+    profile);
     int getBBox ();
     int readNodes ();
     int readAllWays ();
@@ -273,7 +275,8 @@ class Ways
     std::string getCityProfile () { return _city + "_" + profileName;  }
 };
 
-void Ways::setProfile (const std::string& profileName)
+void Ways::setProfile (const std::string& profileName, std::vector
+<ProfilePair>* profile)
 {
     const std::string configfile = "../data/weighting_profiles/profile_" + \
                                     profileName + ".cfg"; 
@@ -282,7 +285,7 @@ void Ways::setProfile (const std::string& profileName)
     std::string line, field;
     std::ifstream in_file;
 
-    Ways::profile.resize (0);
+    profile->resize (0);
 
     in_file.open (configfile.c_str (), std::ifstream::in);
     assert (!in_file.fail ());
@@ -297,7 +300,7 @@ void Ways::setProfile (const std::string& profileName)
             line = line.substr (ipos + 1, line.length () - ipos - 1);
             value = atof (line.c_str ());
 
-            Ways::profile.push_back (std::make_pair (field, value));
+            profile->push_back (std::make_pair (field, value));
         }
     }
     in_file.close ();
