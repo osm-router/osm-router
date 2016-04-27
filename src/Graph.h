@@ -56,6 +56,8 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/foreach.hpp>
+#include <boost/property_tree/xml_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 #include <boost/unordered_set.hpp>
 #include <boost/unordered_map.hpp>
@@ -231,7 +233,6 @@ class Ways
         tempstr = _city;
         std::transform (tempstr.begin(), tempstr.end(), 
                 tempstr.begin(), ::toupper);
-        std::cout << "---" << tempstr << "---" << std::endl;
         osmFile = osmDir + "planet-" + _city + ".osm";
 
         profileName = "../profile.cfg";
@@ -239,14 +240,19 @@ class Ways
 
         err = getBBox ();
         tempstr = readOverpass ();
+        std::cout << tempstr.c_str() << std::endl;
+        std::ofstream output ("output.xml");
+        //boost::property_tree::xml_parser::write_xml (tempstr, output);
+
+        /*
         err = readNodes();
         err = readAllWays ();
         err = getConnected ();
-
         // gFull is no longer needed, so can be destroyed
         gFull.clear ();
         err = readCompactWays ();
         gCompact.clear ();
+        */
     }
     ~Ways ()
     {

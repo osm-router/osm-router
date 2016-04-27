@@ -153,6 +153,12 @@ int Ways::getBBox ()
     lonmax += buffer;
     latmax += buffer;
 
+    // TODO: Remove these
+    lonmin = -0.12;
+    lonmax = -0.115;
+    latmin = 51.515;
+    latmax = 51.52;
+
     return 0;
 }; // end function getBBox
 
@@ -168,21 +174,22 @@ std::string Ways::readOverpass ()
 {
     const std::string key = "['highway']",
                 url_base = "http://overpass-api.de/api/interpreter?data=";
-    std::stringstream bbox, query;
+    std::stringstream bbox, query, url;
 
     bbox << "";
     bbox << "(" << latmin << "," << lonmin << "," << 
         latmax << "," << lonmax << ")";
 
     query << "";
-    query << "(node" << key << bbox << ";way" << key << bbox <<
-                    ";rel" << key << bbox << ";";
-    query << query << url_base << query << ");(._;>;);out;";
+    query << "(node" << key << bbox.str() << ";way" << key << bbox.str() <<
+                    ";rel" << key << bbox.str() << ";";
+    url << "";
+    url << url_base << query.str() << ");(._;>;);out;";
 
     CURLplusplus client;
-    std::string x = client.Get (query.str().c_str ());
+    std::string x = client.Get (url.str().c_str ());
 
-    return 0;
+    return x;
 }; // end function readOverpass
 
 
