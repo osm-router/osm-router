@@ -256,7 +256,6 @@ class Ways
     std::string returnDirName () { return _dirName; }
     std::string returnCity () { return _city; }
 
-    void setProfile (const std::string& profileName);
     void setProfile (const std::string& profileName, std::vector <ProfilePair>*
     profile);
     int getBBox ();
