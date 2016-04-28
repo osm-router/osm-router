@@ -102,12 +102,12 @@ class Graph: public Xml
         Graph_t gFull, gCompact;
 
     protected:
-        boost::unordered_set <long long> terminalNodes;
 
     public:
         umapInt nodeNames;
         umapPair allNodes;
         umapPair_Itr node_itr;
+        boost::unordered_set <long long> terminalNodes;
 
     Graph (std::string file, float lonmin, float latmin, float lonmax, float latmax)
         : Xml (file, lonmin, latmin, lonmax, latmax)
@@ -118,11 +118,13 @@ class Graph: public Xml
             ways.size () << " ways" << std::endl;
 
         nodeNames.clear ();
+        terminalNodes.clear ();
         fillGraph ();
     }
     ~Graph ()
     {
         nodeNames.clear ();
+        terminalNodes.clear ();
     }
 
     void fillGraph ();
@@ -145,9 +147,11 @@ void Graph::fillGraph ()
     float lon1, lat1, lon2, lat2;
     std::vector <float> lats, lons;
     long long ni, nj;
+    boost::unordered_set <long long> nodeList;
     bundled_vertex_type oneVert;
     bundled_edge_type oneEdge;
     umapPair_Itr umapitr;
+    typedef std::vector <long long>::iterator ll_Itr;
 
     // Fill vertices. These are automatically numbered consecutively, so
     // nodeNames is also indexed simultaneously to provide references for edge
@@ -163,50 +167,71 @@ void Graph::fillGraph ()
     }
 
     std::vector <std::pair <std::string, std::string>>::iterator kvi;
+    nodeList.clear ();
     // Fill edges
     for (Ways_Itr wi = ways.begin(); wi != ways.end(); ++wi)
     {
         oneEdge.id = (*wi).id;
         oneEdge.name = (*wi).name;
         oneEdge.type = (*wi).type;
-        
-        /* Writing an iterator over the nodes is too much trouble here, and
-         * would be way longer than the following quick-and-dirty 
-         * TODO: Write a short and comprehensible iterator for this ...
-         * (Make pairs of (lon,lat), and only when they're full make an edge,
-         * then reset them, so can simply iterate over nodes.) */
-        if ((*wi).nodes.size () > 1)
+
+        // Put all first and last nodes into terminal Nodes
+        ni = (*wi).nodes.front ();
+        if (terminalNodes.find (ni) == terminalNodes.end())
+            terminalNodes.insert (ni);
+        nj = (*wi).nodes.back ();
+        if (terminalNodes.find (nj) == terminalNodes.end())
+            terminalNodes.insert (nj);
+
+        // Then set up first origin node
+        assert ((umapitr = nodes.find (ni)) != nodes.end ());
+        lats.resize (0);
+        lons.resize (0);
+        lons.push_back ((*umapitr).second.first);
+        lats.push_back ((*umapitr).second.second);
+        assert (nodeNames.find (ni) != nodeNames.end ());
+        tempi [0] = (*nodeNames.find (ni)).second;
+
+        // Then iterate over the remaining nodes of that way
+        for (ll_Itr it = std::next ((*wi).nodes.begin ());
+                it != (*wi).nodes.end (); it++)
         {
-            for (int i=0; i != ((*wi).nodes.size () - 1); i++)
+            nj = (*it);
+            assert ((umapitr = nodes.find (nj)) != nodes.end ());
+            lons.push_back ((*umapitr).second.first);
+            lats.push_back ((*umapitr).second.second);
+            assert (nodeNames.find (nj) != nodeNames.end ());
+            tempi [1] = (*nodeNames.find (nj)).second;
+
+            if (terminalNodes.find (nj) == terminalNodes.end ())
             {
-                lats.resize (0);
-                lons.resize (0);
+                if (nodeList.find (nj) == nodeList.end ())
+                    nodeList.insert (nj);
+                else
+                    terminalNodes.insert (nj);
+            }
 
-                ni = (*wi).nodes [i];
-                assert ((umapitr = nodes.find (ni)) != nodes.end());
-                lons.push_back ((*umapitr).second.first);
-                lats.push_back ((*umapitr).second.second);
-                assert (nodeNames.find (ni) != nodeNames.end ());
-                tempi [0] = (*nodeNames.find (ni)).second;
-
-                nj = (*wi).nodes [i + 1];
-                assert ((umapitr = nodes.find (nj)) != nodes.end());
-                lons.push_back ((*umapitr).second.first);
-                lats.push_back ((*umapitr).second.second);
-                assert (nodeNames.find (nj) != nodeNames.end ());
-                tempi [1] = (*nodeNames.find (nj)).second;
-
+            assert (lons.size () == lats.size ()); // can't ever fail
+            if (lons.size () == 2) // then add edge
+            {
                 oneEdge.dist = calcDist (lons, lats);
-                boost::add_edge(tempi [0], tempi [1], oneEdge, gFull);
+                boost::add_edge (tempi [0], tempi [1], oneEdge, gFull);
+                tempi [0] = tempi [1];
+                lons.erase (lons.begin ());
+                lats.erase (lats.begin ());
             }
         }
     }
+
+    std::cout << "There are " << terminalNodes.size () <<
+        " terminal nodes and " << nodeList.size () << " non-terminal" << std::endl;
 
     std::vector <int> compvec (num_vertices (gFull));
     tempi [0] = boost::connected_components (gFull, &compvec [0]);
     std::cout << "Graph has " << num_vertices (gFull) << " vertices and " <<
         tempi [0] << " connected components" << std::endl;
 
+    nodeList.clear ();
 } // end function Graph::fillGraph
 
 

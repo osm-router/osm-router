@@ -265,7 +265,6 @@ class Ways
     int getBBox ();
     std::string readOverpass ();
     int readNodes ();
-    int readTerminalNodes ();
     int readAllWays ();
     int getConnected ();
     int readCompactWays ();

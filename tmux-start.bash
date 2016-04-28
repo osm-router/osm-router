@@ -29,6 +29,8 @@ then
 else
     tmux send-keys -t $SESSION:1 'vim xml-parser.h' C-m
     tmux send-keys -t $SESSION:1 ':' 'tabe xml-parser.c++' C-m
+    tmux send-keys -t $SESSION:1 ':' 'tabe Graph-test.h' C-m
+    tmux send-keys -t $SESSION:1 ':' 'tabe Graph-test.c++' C-m
 fi
 
 cd ..
