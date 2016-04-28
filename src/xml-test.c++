@@ -41,7 +41,9 @@
 int main(int argc, char *argv[]) {
     std::string city;
 
-    Xml xml;
+    Xml xml (true); // returns all nodes and ways
+    std::cout << "Parsed " << xml.nodes.size () << " nodes and " << 
+        xml.ways.size () << " ways" << std::endl;
 
     return 0;
 };

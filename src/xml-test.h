@@ -109,6 +109,10 @@ class CURLplusplus
 
 class Xml 
 {
+    /*
+     * Downloads OSM data from the overpass API and parses the XML structure to
+     * extract all nodes and ways.
+     */
     private:
 
     protected:
@@ -119,17 +123,18 @@ class Xml
         Nodes nodes;
         Ways ways;
 
-    Xml ()
+    Xml (bool verbose)
     {
         nodes.resize (0);
         ways.resize (0);
         getBBox ();
-        std::cout << "Downloading overpass query ... ";
-        std::cout.flush ();
+        if (verbose)
+        {
+            std::cout << "Downloading overpass query ... ";
+            std::cout.flush ();
+        }
         tempstr = readOverpass ();
         parseXML (tempstr);
-        std::cout << "Parsed " << nodes.size () << " nodes and " << 
-            ways.size () << " ways" << std::endl;
     }
     ~Xml ()
     {
