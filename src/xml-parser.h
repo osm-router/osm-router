@@ -34,6 +34,8 @@
 
 #include <vector>
 #include <string>
+#include <boost/program_options.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/foreach.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -131,8 +133,10 @@ class Xml
      * extract all nodes and ways.
      */
     private:
+        const std::string _file;
 
     protected:
+        bool file_exists;
         float latmin, lonmin, latmax, lonmax;
 
     public:
@@ -140,17 +144,36 @@ class Xml
         Nodes nodes;
         Ways ways;
 
-    Xml (bool verbose)
+    Xml (std::string file)
+        : _file (file)
     {
         nodes.resize (0);
         ways.resize (0);
-        getBBox ();
-        if (verbose)
+
+        boost::filesystem::path p (_file);
+        if (boost::filesystem::exists (p))
         {
+            std::ifstream in_file;
+            in_file.open (_file, std::ifstream::in);
+            assert (!in_file.fail ());
+            std::stringstream ss;
+            ss << in_file.rdbuf ();
+            tempstr = ss.str ();
+        } else
+        {
+            getBBox ();
             std::cout << "Downloading overpass query ... ";
             std::cout.flush ();
+            tempstr = readOverpass ();
+            // Write raw xml data to _file:
+            std::ofstream out_file;
+            out_file.open (_file, std::ofstream::out);
+            out_file << tempstr;
+            out_file.flush ();
+            out_file.close ();
+            std::cout << " stored in " << _file << std::endl;
         }
-        tempstr = readOverpass ();
+        
         parseXML (tempstr);
     }
     ~Xml ()
@@ -158,6 +181,8 @@ class Xml
         nodes.resize (0);
         ways.resize (0);
     }
+
+    std::string get_file () { return _file; }
 
     void getBBox ();
     std::string readOverpass ();

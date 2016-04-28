@@ -39,9 +39,55 @@
  ************************************************************************/
 
 int main(int argc, char *argv[]) {
-    std::string city;
+    float latfrom, lonfrom, latto, lonto;
+    std::string file;
 
-    Xml xml (true); // returns all nodes and ways
+    try {
+        boost::program_options::options_description generic("Generic options");
+        generic.add_options()
+            ("version,v", "print version std::string")
+            ("help", "produce help message")    
+            ;
+
+        boost::program_options::options_description config("Configuration");
+        config.add_options()
+            ("file,f", boost::program_options::value <std::string> 
+                (&file)->default_value ("xmldat.xml"), "file")
+            ;
+
+        boost::program_options::options_description cmdline_options;
+        cmdline_options.add(generic).add(config);
+
+        boost::program_options::options_description visible("Allowed options");
+        visible.add(generic).add(config);
+
+        boost::program_options::variables_map vm;
+        store(boost::program_options::command_line_parser(argc, argv).
+                options(cmdline_options).run(), vm);
+
+        notify(vm);
+
+        if (vm.count("help")) {
+            std::cout << visible << std::endl;
+            return 0;
+        }
+
+        if (vm.count("version")) {
+            std::cout << "osm-router, version 1.0" << std::endl;
+            return 0;
+        }
+
+    }
+    catch(std::exception& e)
+    {
+        std::cout << e.what() << std::endl;
+        return 1;
+    }    
+
+    if ((int) file.find (".") < 0)
+        file = file + ".xml";
+
+    Xml xml (file); // returns all nodes and ways
     std::cout << "Parsed " << xml.nodes.size () << " nodes and " << 
         xml.ways.size () << " ways" << std::endl;
 
