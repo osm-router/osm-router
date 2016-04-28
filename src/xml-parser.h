@@ -39,14 +39,27 @@
 #include <boost/foreach.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/unordered_map.hpp>
+
+typedef std::pair <float, float> ffPair; // lat-lon
+
+typedef boost::unordered_map <long long, ffPair> umapPair;
+typedef boost::unordered_map <long long, ffPair>::iterator umapPair_Itr;
+
+// See http://theboostcpplibraries.com/boost.unordered
+std::size_t hash_value(const ffPair &f)
+{
+    std::size_t seed = 0;
+    boost::hash_combine(seed, f.first);
+    boost::hash_combine(seed, f.second);
+    return seed;
+}
 
 struct Node
 {
     long long id;
     float lat, lon;
 };
-
-typedef std::vector <Node> Nodes;
 
 /* Traversing the boost::property_tree means keys and values are read
  * sequentially and cannot be processed simultaneously. Each way is thus
@@ -152,14 +165,13 @@ class Xml
 
     public:
         std::string tempstr;
-        Nodes nodes;
         Ways ways;
+        umapPair nodeList;
 
     Xml (std::string file, float lonmin, float latmin, float lonmax, float latmax)
         : _file (file), _lonmin (lonmin), _latmin (latmin),
                         _lonmax (lonmax), _latmax (latmax)
     {
-        nodes.resize (0);
         ways.resize (0);
 
         boost::filesystem::path p (_file);
@@ -189,7 +201,6 @@ class Xml
     }
     ~Xml ()
     {
-        nodes.resize (0);
         ways.resize (0);
     }
 
@@ -281,7 +292,7 @@ void Xml::traverseXML (const boost::property_tree::ptree& pt)
         if (it->first == "node")
         {
             node = traverseNode (it->second, node);
-            nodes.push_back (node);
+            nodeList [node.id] = std::make_pair (node.lat, node.lon);
 
             // ------------ just text output guff ---------------
             /*
