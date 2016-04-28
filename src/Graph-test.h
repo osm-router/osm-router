@@ -118,7 +118,6 @@ class Graph: public Xml
             ways.size () << " ways" << std::endl;
 
         nodeNames.clear ();
-        terminalNodes.clear ();
         fillGraph ();
     }
     ~Graph ()
@@ -146,7 +145,7 @@ void Graph::fillGraph ()
     int tempi [2];
     float lon1, lat1, lon2, lat2;
     std::vector <float> lats, lons;
-    long long ni, nj;
+    long long ni;
     boost::unordered_set <long long> nodeList;
     bundled_vertex_type oneVert;
     bundled_edge_type oneEdge;
@@ -166,49 +165,51 @@ void Graph::fillGraph ()
         nodeNames [oneVert.id] = tempi [0]++;
     }
 
-    std::vector <std::pair <std::string, std::string>>::iterator kvi;
     nodeList.clear ();
-    // Fill edges
+    terminalNodes.clear ();
+    // First put all first and last nodes of each way into terminalNodes
+    for (Ways_Itr wi = ways.begin(); wi != ways.end(); ++wi)
+    {
+        if (terminalNodes.find ((*wi).nodes.front ()) == terminalNodes.end())
+            terminalNodes.insert ((*wi).nodes.front ());
+        if (terminalNodes.find ((*wi).nodes.back ()) == terminalNodes.end())
+            terminalNodes.insert ((*wi).nodes.back ());
+    }
+    
+    // Then fill edges
     for (Ways_Itr wi = ways.begin(); wi != ways.end(); ++wi)
     {
         oneEdge.id = (*wi).id;
         oneEdge.name = (*wi).name;
         oneEdge.type = (*wi).type;
 
-        // Put all first and last nodes into terminal Nodes
+        // Set up first origin node
         ni = (*wi).nodes.front ();
-        if (terminalNodes.find (ni) == terminalNodes.end())
-            terminalNodes.insert (ni);
-        nj = (*wi).nodes.back ();
-        if (terminalNodes.find (nj) == terminalNodes.end())
-            terminalNodes.insert (nj);
-
-        // Then set up first origin node
         assert ((umapitr = nodes.find (ni)) != nodes.end ());
         lats.resize (0);
         lons.resize (0);
         lons.push_back ((*umapitr).second.first);
         lats.push_back ((*umapitr).second.second);
         assert (nodeNames.find (ni) != nodeNames.end ());
-        tempi [0] = (*nodeNames.find (ni)).second;
+        tempi [0] = (*nodeNames.find (ni)).second; // int index of node ID
 
         // Then iterate over the remaining nodes of that way
         for (ll_Itr it = std::next ((*wi).nodes.begin ());
                 it != (*wi).nodes.end (); it++)
         {
-            nj = (*it);
-            assert ((umapitr = nodes.find (nj)) != nodes.end ());
+            assert ((umapitr = nodes.find (*it)) != nodes.end ());
             lons.push_back ((*umapitr).second.first);
             lats.push_back ((*umapitr).second.second);
-            assert (nodeNames.find (nj) != nodeNames.end ());
-            tempi [1] = (*nodeNames.find (nj)).second;
+            assert (nodeNames.find (*it) != nodeNames.end ());
+            tempi [1] = (*nodeNames.find (*it)).second;
 
-            if (terminalNodes.find (nj) == terminalNodes.end ())
+            if (terminalNodes.find (*it) == terminalNodes.end () &&
+                    nodeList.find (*it) == nodeList.end ())
             {
-                if (nodeList.find (nj) == nodeList.end ())
-                    nodeList.insert (nj);
+                if (nodeList.find (*it) == nodeList.end ())
+                    nodeList.insert (*it);
                 else
-                    terminalNodes.insert (nj);
+                    terminalNodes.insert (*it);
             }
 
             assert (lons.size () == lats.size ()); // can't ever fail
@@ -223,8 +224,10 @@ void Graph::fillGraph ()
         }
     }
 
+    tempi [0] = terminalNodes.size () + nodeList.size ();
     std::cout << "There are " << terminalNodes.size () <<
-        " terminal nodes and " << nodeList.size () << " non-terminal" << std::endl;
+        " terminal nodes and " << nodeList.size () << " non-terminal" << 
+        "; total = " << tempi [0] << std::endl;
 
     std::vector <int> compvec (num_vertices (gFull));
     tempi [0] = boost::connected_components (gFull, &compvec [0]);
