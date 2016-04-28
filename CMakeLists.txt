@@ -11,7 +11,7 @@ ADD_DEFINITIONS(
     #-DCURL_STATICLIB
 )
 set(SOURCES_GRAPH src/Graph.c++)
-set(SOURCES_XML src/xml-test.c++)
+set(SOURCES_XML src/xml-parser.c++)
 set(SOURCES_ROUTER src/Router.c++)
 
 add_executable(${TARGET_GRAPH} ${SOURCES_GRAPH})

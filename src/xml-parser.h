@@ -1,6 +1,6 @@
 /***************************************************************************
  *  Project:    osm-router
- *  File:       xml-test.h
+ *  File:       xml-parser.h
  *  Language:   C++
  *
  *  osm-router is free software: you can redistribute it and/or modify it
