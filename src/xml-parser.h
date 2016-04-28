@@ -164,15 +164,17 @@ class Xml
         bool file_exists;
 
     public:
+        int tempi;
         std::string tempstr;
         Ways ways;
-        umapPair nodeList;
+        umapPair nodes;
 
     Xml (std::string file, float lonmin, float latmin, float lonmax, float latmax)
         : _file (file), _lonmin (lonmin), _latmin (latmin),
                         _lonmax (lonmax), _latmax (latmax)
     {
         ways.resize (0);
+        nodes.clear ();
 
         boost::filesystem::path p (_file);
         if (boost::filesystem::exists (p))
@@ -202,6 +204,7 @@ class Xml
     ~Xml ()
     {
         ways.resize (0);
+        nodes.clear ();
     }
 
     std::string get_file () { return _file; }
@@ -285,6 +288,7 @@ void Xml::traverseXML (const boost::property_tree::ptree& pt)
     RawWay rway;
     Way way;
     Node node;
+    // NOTE: Node is (lon, lat) = (x, y)!
 
     for (boost::property_tree::ptree::const_iterator it = pt.begin ();
             it != pt.end (); ++it)
@@ -292,12 +296,12 @@ void Xml::traverseXML (const boost::property_tree::ptree& pt)
         if (it->first == "node")
         {
             node = traverseNode (it->second, node);
-            nodeList [node.id] = std::make_pair (node.lat, node.lon);
+            nodes [node.id] = std::make_pair (node.lon, node.lat);
 
             // ------------ just text output guff ---------------
             /*
             std::cout << "-----Node ID = " << node.id << " (" <<
-                node.lat << ", " << node.lon << ")" << std::endl;
+                node.lon << ", " << node.lat << ")" << std::endl;
             */
         }
         if (it->first == "way")
@@ -392,6 +396,8 @@ RawWay Xml::traverseWay (const boost::property_tree::ptree& pt, RawWay rway)
 
 Node Xml::traverseNode (const boost::property_tree::ptree& pt, Node node)
 {
+    // Only coordinates of nodes are read, because only those are stored in the
+    // unordered map. More node info is unlikely to be necessary ... ?
     for (boost::property_tree::ptree::const_iterator it = pt.begin ();
             it != pt.end (); ++it)
     {
@@ -407,3 +413,4 @@ Node Xml::traverseNode (const boost::property_tree::ptree& pt, Node node)
 
     return node;
 } // end function Xml::traverseNode
+

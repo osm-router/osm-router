@@ -10,7 +10,7 @@ ADD_DEFINITIONS(
     -std=c++11 
     #-DCURL_STATICLIB
 )
-set(SOURCES_GRAPH src/Graph.c++)
+set(SOURCES_GRAPH src/Graph-test.c++)
 set(SOURCES_XML src/xml-parser.c++)
 set(SOURCES_ROUTER src/Router.c++)
 
