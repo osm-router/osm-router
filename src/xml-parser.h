@@ -48,11 +48,22 @@ struct Node
 
 typedef std::vector <Node> Nodes;
 
+/* Traversing the boost::property_tree means keys and values are read
+ * sequentially and cannot be processed simultaneously. Each way is thus
+ * initially read as a RawWay with separate vectors for keys and values. These
+ * are subsequently converted in Way to a vector of <std::pair>. */
+struct RawWay
+{
+    long long id;
+    std::vector <std::string> key, value;
+    std::vector <long long> nodes;
+};
+
 struct Way
 {
     long long id;
     std::string type, name; // type is highway type (value for highway key)
-    std::vector <std::string> key, value;
+    std::vector <std::pair <std::string, std::string>> key_val;
     std::vector <long long> nodes;
 };
 
@@ -134,7 +145,7 @@ class Xml
      */
     private:
         const std::string _file;
-        float _latmin, _lonmin, _latmax, _lonmax;
+        const float _latmin, _lonmin, _latmax, _lonmax;
 
     protected:
         bool file_exists;
@@ -191,7 +202,7 @@ class Xml
     std::string readOverpass ();
     void parseXML ( std::string & is );
     void traverseXML (const boost::property_tree::ptree& pt);
-    Way traverseWay (const boost::property_tree::ptree& pt, Way way);
+    RawWay traverseWay (const boost::property_tree::ptree& pt, RawWay rway);
     Node traverseNode (const boost::property_tree::ptree& pt, Node node);
 };
 
@@ -260,6 +271,7 @@ void Xml::parseXML ( std::string & is )
 void Xml::traverseXML (const boost::property_tree::ptree& pt)
 {
     int tempi;
+    RawWay rway;
     Way way;
     Node node;
 
@@ -279,41 +291,57 @@ void Xml::traverseXML (const boost::property_tree::ptree& pt)
         }
         if (it->first == "way")
         {
-            way.key.resize (0);
-            way.value.resize (0);
-            way.nodes.resize (0);
+            rway.key.resize (0);
+            rway.value.resize (0);
+            rway.nodes.resize (0);
 
-            way = traverseWay (it->second, way);
-            assert (way.key.size () == way.value.size ());
-            // get name from key-value pairs
-            for (int i=0; i<way.key.size (); i++)
-                if (way.key [i] == "name")
+            rway = traverseWay (it->second, rway);
+            assert (rway.key.size () == rway.value.size ());
+
+            // This is much easier as explicit loop than with an iterator
+            way.id = rway.id;
+            way.name = way.type = "";
+            way.key_val.resize (0);
+            for (int i=0; i<rway.key.size (); i++)
+                if (rway.key [i] == "name")
+                    way.name = rway.value [i];
+                else if (rway.key [i] == "highway")
+                    way.type = rway.value [i];
+                else
                 {
-                    way.name = way.value [i];
-                    tempi = i;
-                    break;
+                    way.key_val.push_back (std::make_pair (rway.key [i], rway.value [i]));
                 }
-            way.key.erase (way.key.begin() + tempi);
-            way.value.erase (way.value.begin() + tempi);
+
+            // Then copy nodes from rway to way. 
+            way.nodes.resize (0);
+            for (std::vector <long long>::iterator it = rway.nodes.begin ();
+                    it != rway.nodes.end (); it++)
+                way.nodes.push_back (*it);
             ways.push_back (way);
 
             // ------------ just text output guff ---------------
             /*
             std::cout << "-----Way ID = " << way.id << std::endl;
             std::cout << "nodes = (";
-            for (int i=0; i<way.nodes.size (); i++)
-                std::cout << way.nodes [i] << ", ";
+            for (std::vector <long long>::iterator wn = way.nodes.begin ();
+                    wn != way.nodes.end (); wn++)
+                std::cout << *wn << ", ";
             std::cout << ")" << std::endl;
-            for (int i=0; i<way.key.size (); i++)
-                if (way.key [i] == "name")
-                    std::cout << "NAME = " << way.value [i] << std::endl;
-                else if (way.key [i] == "highway")
-                    std::cout << "highway: " << way.value [i] << std::endl;
+            std::cout << "NAME = " << way.name << "; type = " <<
+                way.type << std::endl;
+            for (std::vector <std::pair <std::string, std::string>>::iterator
+                    it = way.key_val.begin (); it != way.key_val.end (); it++)
+            {
+                std::cout << (*it).first << ": " << (*it).second << std::endl;
+            }
             */
         } else
             traverseXML (it->second);
     }
-}
+    rway.key.resize (0);
+    rway.value.resize (0);
+    rway.nodes.resize (0);
+} // end function Xml::traverseXML
 
 /************************************************************************
  ************************************************************************
@@ -323,24 +351,24 @@ void Xml::traverseXML (const boost::property_tree::ptree& pt)
  ************************************************************************
  ************************************************************************/
 
-Way Xml::traverseWay (const boost::property_tree::ptree& pt, Way way)
+RawWay Xml::traverseWay (const boost::property_tree::ptree& pt, RawWay rway)
 {
     for (boost::property_tree::ptree::const_iterator it = pt.begin ();
             it != pt.end (); ++it)
     {
         if (it->first == "k")
-            way.key.push_back (it->second.get_value <std::string> ());
+            rway.key.push_back (it->second.get_value <std::string> ());
         else if (it->first == "v")
-            way.value.push_back (it->second.get_value <std::string> ());
+            rway.value.push_back (it->second.get_value <std::string> ());
         else if (it->first == "id")
-            way.id = it->second.get_value <long long> ();
+            rway.id = it->second.get_value <long long> ();
         else if (it->first == "ref")
-            way.nodes.push_back (it->second.get_value <long long> ());
-        way = traverseWay (it->second, way);
+            rway.nodes.push_back (it->second.get_value <long long> ());
+        rway = traverseWay (it->second, rway);
     }
 
-    return way;
-}
+    return rway;
+} // end function Xml::traverseWay
 
 
 /************************************************************************
@@ -367,4 +395,4 @@ Node Xml::traverseNode (const boost::property_tree::ptree& pt, Node node)
     }
 
     return node;
-}
+} // end function Xml::traverseNode

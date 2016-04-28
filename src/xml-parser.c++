@@ -38,7 +38,8 @@
  ************************************************************************
  ************************************************************************/
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) 
+{
     float lonmin, latmin, lonmax, latmax;
     std::string file;
 
@@ -52,15 +53,17 @@ int main(int argc, char *argv[]) {
         boost::program_options::options_description config("Configuration");
         config.add_options()
             ("file,f", boost::program_options::value <std::string> 
-                (&file)->default_value ("xmldat.xml"), "file")
+                (&file)->default_value ("xmldat.xml"), 
+                "file name (.xml will be appended)")
             ("lonmin,a", boost::program_options::value <float> 
-                (&lonmin)->default_value (-0.12), "lonmin")
+                (&lonmin)->default_value (-0.12), 
+                "lonmin (ignored if file exists)")
             ("latmin,b", boost::program_options::value <float> 
-                (&latmin)->default_value (51.515), "latmin")
+                (&latmin)->default_value (51.515), "latmin (ditto)")
             ("lonmax,c", boost::program_options::value <float> 
-                (&lonmax)->default_value (-0.115), "lonmax")
+                (&lonmax)->default_value (-0.115), "lonmax (ditto)")
             ("latmax,d", boost::program_options::value <float> 
-                (&latmax)->default_value (51.52), "latmax")
+                (&latmax)->default_value (51.52), "latmax (ditto)")
             ;
 
         boost::program_options::options_description cmdline_options;
