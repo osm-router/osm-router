@@ -39,7 +39,7 @@
  ************************************************************************/
 
 int main(int argc, char *argv[]) {
-    float latfrom, lonfrom, latto, lonto;
+    float lonmin, latmin, lonmax, latmax;
     std::string file;
 
     try {
@@ -53,6 +53,14 @@ int main(int argc, char *argv[]) {
         config.add_options()
             ("file,f", boost::program_options::value <std::string> 
                 (&file)->default_value ("xmldat.xml"), "file")
+            ("lonmin,a", boost::program_options::value <float> 
+                (&lonmin)->default_value (-0.12), "lonmin")
+            ("latmin,b", boost::program_options::value <float> 
+                (&latmin)->default_value (51.515), "latmin")
+            ("lonmax,c", boost::program_options::value <float> 
+                (&lonmax)->default_value (-0.115), "lonmax")
+            ("latmax,d", boost::program_options::value <float> 
+                (&latmax)->default_value (51.52), "latmax")
             ;
 
         boost::program_options::options_description cmdline_options;
@@ -87,7 +95,7 @@ int main(int argc, char *argv[]) {
     if ((int) file.find (".") < 0)
         file = file + ".xml";
 
-    Xml xml (file); // returns all nodes and ways
+    Xml xml (file, lonmin, latmin, lonmax, latmax); 
     std::cout << "Parsed " << xml.nodes.size () << " nodes and " << 
         xml.ways.size () << " ways" << std::endl;
 

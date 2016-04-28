@@ -134,18 +134,19 @@ class Xml
      */
     private:
         const std::string _file;
+        float _latmin, _lonmin, _latmax, _lonmax;
 
     protected:
         bool file_exists;
-        float latmin, lonmin, latmax, lonmax;
 
     public:
         std::string tempstr;
         Nodes nodes;
         Ways ways;
 
-    Xml (std::string file)
-        : _file (file)
+    Xml (std::string file, float lonmin, float latmin, float lonmax, float latmax)
+        : _file (file), _lonmin (lonmin), _latmin (latmin),
+                        _lonmax (lonmax), _latmax (latmax)
     {
         nodes.resize (0);
         ways.resize (0);
@@ -161,7 +162,6 @@ class Xml
             tempstr = ss.str ();
         } else
         {
-            getBBox ();
             std::cout << "Downloading overpass query ... ";
             std::cout.flush ();
             tempstr = readOverpass ();
@@ -183,8 +183,11 @@ class Xml
     }
 
     std::string get_file () { return _file; }
+    float get_lonmin () { return _lonmin;   }
+    float get_latmin () { return _latmin;   }
+    float get_lonmax () { return _lonmax;   }
+    float get_latmax () { return _latmax;   }
 
-    void getBBox ();
     std::string readOverpass ();
     void parseXML ( std::string & is );
     void traverseXML (const boost::property_tree::ptree& pt);
@@ -192,23 +195,6 @@ class Xml
     Node traverseNode (const boost::property_tree::ptree& pt, Node node);
 };
 
-
-/************************************************************************
- ************************************************************************
- **                                                                    **
- **                         FUNCTION::GETBBOX                          **
- **                                                                    **
- ************************************************************************
- ************************************************************************/
-
-void Xml::getBBox ()
-{
-    // TODO: Copy old getBBox from Graph.c++
-    lonmin = -0.12;
-    lonmax = -0.115;
-    latmin = 51.515;
-    latmax = 51.52;
-}; // end function getBBox
 
 
 /************************************************************************
@@ -226,8 +212,8 @@ std::string Xml::readOverpass ()
     std::stringstream bbox, query, url;
 
     bbox << "";
-    bbox << "(" << latmin << "," << lonmin << "," << 
-        latmax << "," << lonmax << ")";
+    bbox << "(" << get_latmin () << "," << get_lonmin () << "," << 
+        get_latmax () << "," << get_lonmax () << ")";
 
     query << "";
     query << "(node" << key << bbox.str() << ";way" << key << bbox.str() <<
