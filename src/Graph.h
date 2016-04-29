@@ -101,7 +101,7 @@ class Graph: public Xml
 
     protected:
         std::vector <ProfilePair> profile;
-        Graph_t gFull, gCompact;
+        Graph_t gr;
 
     public:
         umapInt nodeIndxFull, nodeIndxCompact;
@@ -135,8 +135,7 @@ class Graph: public Xml
     {
         nodeIndxFull.clear ();
         nodeIndxCompact.clear ();
-        gFull.clear ();
-        gCompact.clear ();
+        gr.clear ();
     }
 
     std::string getProfileFile () { return _profile_file;   }
@@ -313,7 +312,7 @@ void Graph::makeFullGraph ()
                 oneVert.id = (*umapitr).first;
                 oneVert.lon = (*umapitr).second.first;
                 oneVert.lat = (*umapitr).second.second;
-                boost::add_vertex (oneVert, gFull);
+                boost::add_vertex (oneVert, gr);
                 tempi [0] = nodeCount;
                 nodeIndxFull [oneVert.id] = nodeCount++;
             } else
@@ -337,7 +336,7 @@ void Graph::makeFullGraph ()
                     oneVert.id = (*umapitr).first;
                     oneVert.lon = (*umapitr).second.first;
                     oneVert.lat = (*umapitr).second.second;
-                    boost::add_vertex (oneVert, gFull);
+                    boost::add_vertex (oneVert, gr);
                     tempi [1] = nodeCount;
                     nodeIndxFull [oneVert.id] = nodeCount++;
                 } else
@@ -352,16 +351,16 @@ void Graph::makeFullGraph ()
 
                 // count edges (can also count in_edges for bidirectionalS)
                 /*
-                boost::tie (ei, ei_end) = out_edges (tempi [0], gFull);
+                boost::tie (ei, ei_end) = out_edges (tempi [0], g);
                 int parallel_count = 0;
                 for ( ; ei != ei_end; ++ei)
-                    if (boost::target (*ei, gFull) == tempi [1])
+                    if (boost::target (*ei, g) == tempi [1])
                         parallel_count++;
                 */
 
-                add_edge (tempi [0], tempi [1], &gFull, &oneEdge, (*wi).type);
+                add_edge (tempi [0], tempi [1], &gr, &oneEdge, (*wi).type);
                 if (!(*wi).oneway || !obey_oneway)
-                    add_edge (tempi [1], tempi [0], &gFull, &oneEdge, (*wi).type);
+                    add_edge (tempi [1], tempi [0], &gr, &oneEdge, (*wi).type);
 
                 assert (lons.size () == lats.size ()); // can't ever fail
                 tempi [0] = tempi [1];
@@ -371,8 +370,8 @@ void Graph::makeFullGraph ()
         } // end if wt > 0.0
     } // end for Ways_itr over ways
 
-    std::cout << "Full graph has " << num_vertices (gFull) << " vertices and " <<
-        getConnected (&gFull) << " connected components" << std::endl;
+    std::cout << "Full graph has " << num_vertices (gr) << " vertices and " <<
+        getConnected (&gr) << " connected components" << std::endl;
 } // end function Graph::makeFullGraph
 
 
@@ -469,7 +468,7 @@ void Graph::makeCompactGraph ()
                 oneVert.id = (*umapitr).first;
                 oneVert.lon = (*umapitr).second.first;
                 oneVert.lat = (*umapitr).second.second;
-                boost::add_vertex (oneVert, gCompact);
+                boost::add_vertex (oneVert, gr);
                 tempi [0] = nodeCount;
                 nodeIndxCompact [oneVert.id] = nodeCount++;
             } else
@@ -503,16 +502,16 @@ void Graph::makeCompactGraph ()
                         oneVert.id = (*umapitr).first;
                         oneVert.lon = (*umapitr).second.first;
                         oneVert.lat = (*umapitr).second.second;
-                        boost::add_vertex (oneVert, gCompact);
+                        boost::add_vertex (oneVert, gr);
                         tempi [1] = nodeCount;
                         nodeIndxCompact [oneVert.id] = nodeCount++;
                     } else
                     {
                         tempi [1] = (*nodeIndxCompact.find (*it)).second;
                     }
-                    add_edge (tempi [0], tempi [1], &gCompact, &oneEdge, (*wi).type);
+                    add_edge (tempi [0], tempi [1], &gr, &oneEdge, (*wi).type);
                     if (!(*wi).oneway || !obey_oneway)
-                        add_edge (tempi [1], tempi [0], &gCompact, &oneEdge, (*wi).type);
+                        add_edge (tempi [1], tempi [0], &gr, &oneEdge, (*wi).type);
 
                     tempi [0] = tempi [1];
                     oneEdge.dist = 0.0;
@@ -525,8 +524,8 @@ void Graph::makeCompactGraph ()
     } // end for Ways_itr over ways
     nodeCounts.clear ();
 
-    std::cout << "Compact graph has " << num_vertices (gCompact) << 
-        " vertices and " << getConnected (&gCompact) << 
+    std::cout << "Compact graph has " << num_vertices (gr) << 
+        " vertices and " << getConnected (&gr) << 
         " connected components" << std::endl;
 } // end function Graph::makeCompactGraph
 

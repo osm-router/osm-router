@@ -85,21 +85,29 @@ class Router: public Graph
     private:
         bool _compactGraph;
     protected:
+        float _xfrom, _yfrom, _xto, _yto;
     public:
+        int err;
+        long long from_node, to_node;
         std::vector <float> dists;
         std::vector <RoutingPoint> RoutingPointsList;
 
     Router (std::string xml_file, std::string profile_file,
+            float xfrom, float yfrom, float xto, float yto,
             float lonmin, float latmin, float lonmax, float latmax,
             bool compact)
-        : _compactGraph (compact),
-            Graph (xml_file, profile_file, lonmin, latmin, lonmax, latmax)
+        : _xfrom (xfrom), _yfrom (yfrom), _xto (xto), _yto (yto),
+            Graph (compact, xml_file, profile_file, 
+                lonmin, latmin, lonmax, latmax)
     {
+        from_node = nearestNode (_xfrom, _yfrom);
+        to_node = nearestNode (_xto, _yto);
+        std::cout << "(from, to) node = (" << from_node << ", " <<
+            to_node << ")" << std::endl;
+        err = dijkstra (from_node);
         /*
         err = getBBox ();
         err = readRoutingPoints ();
-
-        err = remapRoutingPoints ();
 
         std::cout << "Getting distances between routing points";
         std::cout.flush ();
@@ -125,6 +133,150 @@ class Router: public Graph
     }
 
     long long nearestNode (float lon0, float lat0);
-    int readRoutingPoints ();
     int dijkstra (long long fromNode);
 };
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                            NEARESTNODE                             **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+
+long long Router::nearestNode (float lon0, float lat0)
+{
+    int id;
+    long long node = -INT_MAX;
+    float d, lon, lat, xd, yd, dmin = FLOAT_MAX;
+
+    /*
+     * This is the only place in the whole program that requires explicit
+     * looping over vertices, and takes longer than all other bits. Calculating
+     * distances to nearest vertices as sums of the 2 abs distances in lats &
+     * lons saves only about 2.5s.
+     *
+     * nodeNames lists the highway vertices, which must be matched to the full
+     * list of allNodes to find corresponding lats&lons.
+     */
+
+    boost::property_map< Graph_t, long long bundled_vertex_type::* >::type 
+        vertex_id = boost::get(&bundled_vertex_type::id, gr);
+    boost::property_map< Graph_t, float bundled_vertex_type::* >::type 
+        vertex_lat = boost::get(&bundled_vertex_type::lat, gr);
+    boost::property_map< Graph_t, float bundled_vertex_type::* >::type 
+        vertex_lon = boost::get(&bundled_vertex_type::lon, gr);
+    boost::property_map< Graph_t, int bundled_vertex_type::* >::type 
+        vertex_component = boost::get(&bundled_vertex_type::component, gr);
+
+    auto vs = boost::vertices (gr);
+    for (auto vit = vs.first; vit != vs.second; ++vit)
+    {
+        if (vertex_component [*vit] == 0)
+        {
+            lat = vertex_lat [*vit];
+            lon = vertex_lon [*vit];
+
+            //d = std::abs (lon - lon0) + std::abs (lat - lat0);
+
+            xd = (lon - lon0) * PI / 180.0;
+            yd = (lat - lat0) * PI / 180.0;
+            d = sin (yd / 2.0) * sin (yd / 2.0) + cos (lat * PI / 180.0) *
+                cos (lat0 * PI / 180.0) * sin (xd / 2.0) * sin (xd / 2.0);
+            d = 2.0 * atan2 (sqrt (d), sqrt (1.0 - d));
+            d = d * 6371.0;
+
+            if (d < dmin)
+            {
+                dmin = d;
+                node = vertex_id [*vit];
+            }
+        }
+    }
+
+    return node;
+} // end function calcDist
+
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                              DIJKSTRA                              **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int Router::dijkstra (long long fromNode)
+{
+    std::vector <Vertex> predecessors (boost::num_vertices (gr)); 
+    std::vector <Weight> distances (boost::num_vertices (gr)); 
+
+    boost::property_map < Graph_t, long long bundled_vertex_type::* >::type 
+        vertex_id = boost::get(&bundled_vertex_type::id, gr);
+    boost::property_map < Graph_t, float bundled_vertex_type::* >::type 
+        vertex_lat = boost::get(&bundled_vertex_type::lat, gr);
+    boost::property_map < Graph_t, float bundled_vertex_type::* >::type 
+        vertex_lon = boost::get(&bundled_vertex_type::lon, gr);
+
+    auto p_map = boost::make_iterator_property_map
+        (&predecessors[0], boost::get(boost::vertex_index, gr));
+    auto d_map = boost::make_iterator_property_map
+        (&distances[0], boost::get(boost::vertex_index, gr));
+    auto w_map = boost::get(&bundled_edge_type::weight, gr); 
+
+    int start = vertex (fromNode, gr);
+    std::cout << "Starting dijkstra .. ";
+    std::cout.flush ();
+    boost::dijkstra_shortest_paths (gr, start,
+            weight_map (w_map). 
+            predecessor_map (p_map).
+            distance_map (d_map));
+    std::cout << " done." << std::endl;
+
+    // Check that all routing points have been reached
+    int nvalid = 0;
+    for (std::vector <RoutingPoint>::iterator itr = RoutingPointsList.begin();
+            itr != RoutingPointsList.end (); itr++)
+        if (distances [(*itr).nodeIndex] < FLOAT_MAX)
+            nvalid++;
+    std::cout << "nvalid = " << nvalid << " / " << RoutingPointsList.size ();
+    assert (nvalid == RoutingPointsList.size ());
+
+    // Trace back from each routing point 
+    Vertex v0, v;
+    dists.resize (0);
+    float dist;
+
+    for (std::vector <RoutingPoint>::iterator itr = RoutingPointsList.begin();
+            itr != RoutingPointsList.end (); itr++)
+    {
+        v0 = itr->nodeIndex;
+        v = v0;
+        dist = 0.0;
+        for (Vertex u = p_map[v]; u != v; v = u, u = p_map[v]) 
+        {
+            std::pair<Graph_t::edge_descriptor, bool> edgePair = 
+                boost::edge(u, v, gr);
+            Graph_t::edge_descriptor edge = edgePair.first;
+            dist += boost::get (&bundled_edge_type::dist, gr, edge);
+        }
+        dists.push_back (dist);
+    }
+
+    assert (dists.size () == RoutingPointsList.size ());
+    /*
+     * First have to match long long fromNode to index# within
+     * RoutingPointsList.  There are cases where two routing points match to
+     * same OSM node, so distmats have to be filled for all such multiples
+     */
+    std::vector <int> id;
+    id.resize (0);
+    for (int i=0; i<RoutingPointsList.size(); i++)
+        if (RoutingPointsList [i].nodeIndex == fromNode)
+            id.push_back (i);
+    assert (id.size () > 0);
+
+    return 0;
+}
