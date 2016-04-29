@@ -20,10 +20,8 @@ add_executable(${TARGET_ROUTER} ${SOURCES_ROUTER})
 
 find_path (LIBCURL_INCLUDE_DIR curl/curl.h HINTS ${LIBCURL_DIR}/include)
 include_directories(${LIBCURL_INCLUDE_DIR})
-#add_dependencies(${TARGET_GRAPH} libcurl)
-#add_dependencies(${TARGET_XML} libcurl)
-add_dependencies(${TARGET_GRAPH} `pkg-config --libs libcurl`)
-add_dependencies(${TARGET_XML} `pkg-config --libs libcurl`)
+add_dependencies(${TARGET_GRAPH} libcurl)
+add_dependencies(${TARGET_XML} libcurl)
 
 set (LIBS ${LIBS} boost_program_options boost_filesystem boost_system)
 set (LIBS ${LIBS} curl)
