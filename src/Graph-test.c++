@@ -16,8 +16,8 @@
  *  You should have received a copy of the GNU General Public License along with
  *  osm-router.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  Author:     Mark Padgham 
- *  E-Mail:     mark.padgham@email.com 
+ *  Author:     Mark Padgham / Andreas Petutschnig
+ *  E-Mail:     mark.padgham@email.com / andras@petutschnig.de
  *
  *  Description:    C++ implementation of OSM router using boost::graph.
  *                  Designed to work in a designated area, and so reads data
@@ -46,7 +46,7 @@
 int main(int argc, char *argv[]) 
 {
     float lonmin, latmin, lonmax, latmax;
-    std::string file;
+    std::string xml_file, profile_file;
 
     try {
         boost::program_options::options_description generic("Generic options");
@@ -57,12 +57,15 @@ int main(int argc, char *argv[])
 
         boost::program_options::options_description config("Configuration");
         config.add_options()
-            ("file,f", boost::program_options::value <std::string> 
-                (&file)->default_value ("xmldat.xml"), 
-                "file name (.xml will be appended)")
+            ("xml_file,f", boost::program_options::value <std::string> 
+                (&xml_file)->default_value ("xmldat.xml"), 
+                "xml_file name (.xml will be appended)")
+            ("profile_file,p", boost::program_options::value <std::string> 
+                (&profile_file)->default_value ("../profile.cfg"), 
+                "profile file name")
             ("lonmin,a", boost::program_options::value <float> 
                 (&lonmin)->default_value (-0.12), 
-                "lonmin (ignored if file exists)")
+                "lonmin (ignored if xml_file exists)")
             ("latmin,b", boost::program_options::value <float> 
                 (&latmin)->default_value (51.515), "latmin (ditto)")
             ("lonmax,c", boost::program_options::value <float> 
@@ -100,8 +103,8 @@ int main(int argc, char *argv[])
         return 1;
     }    
 
-    if ((int) file.find (".") < 0)
-        file = file + ".xml";
+    if ((int) xml_file.find (".") < 0)
+        xml_file = xml_file + ".xml";
 
-    Graph graph (file, lonmin, latmin, lonmax, latmax); 
+    Graph graph (xml_file, profile_file, lonmin, latmin, lonmax, latmax); 
 };

@@ -16,8 +16,8 @@
  *  You should have received a copy of the GNU General Public License along with
  *  osm-router.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  Author:     Mark Padgham 
- *  E-Mail:     mark.padgham@email.com 
+ *  Author:     Mark Padgham / Andreas Petutschnig
+ *  E-Mail:     mark.padgham@email.com / andras@petutschnig.de
  *
  *  Description:    C++ implementation of OSM router using boost::graph.
  *                  Designed to work in a designated area, and so reads data
@@ -96,22 +96,32 @@ class Graph: public Xml
     using Vertex = boost::graph_traits<Graph_t>::vertex_descriptor;
 
     private:
+        bool obey_oneway;
+        std::string _profile_file;
         Graph_t gFull, gCompact;
 
     protected:
+        std::vector <ProfilePair> profile;
 
     public:
         umapInt nodeIndxFull, nodeIndxCompact;
         umapPair_Itr node_itr;
 
 
-    Graph (std::string file, float lonmin, float latmin, float lonmax, float latmax)
-        : Xml (file, lonmin, latmin, lonmax, latmax)
+    Graph (std::string xml_file, std::string profile_file,
+            float lonmin, float latmin, float lonmax, float latmax)
+        : _profile_file (profile_file),
+            Xml (xml_file, lonmin, latmin, lonmax, latmax)
     {
         // Construction fills vectors of "ways" and "nodes" from Xml class
         // These then need to be used to fill the boost::graph
         // #nodes = nodes.size ()
         // #ways = ways.size ()
+
+        boost::filesystem::path p (_profile_file);
+        if (boost::filesystem::exists (p))
+            setProfile (_profile_file.c_str (), &profile);
+        // setProfile also sets obey_oneway
 
         nodeIndxFull.clear ();
         nodeIndxCompact.clear ();
@@ -127,6 +137,8 @@ class Graph: public Xml
         gCompact.clear ();
     }
 
+    std::string getProfileFile () { return _profile_file;   }
+
     void dumpWays ();
     void dumpGraph (Graph_t* g);
     void makeFullGraph ();
@@ -135,6 +147,10 @@ class Graph: public Xml
     void add_edge (int v1, int v2, Graph_t* g,
             bundled_edge_type* oneEdge, std::string new_highway_type);
     int getConnected (Graph_t *g);
+    void setProfile (const std::string& profileName, 
+            std::vector <ProfilePair>* profile);
+    float getProfileWeight (std::vector <ProfilePair>* profile,
+            std::string highway_type);
 };
 
 
@@ -261,7 +277,7 @@ void Graph::dumpGraph (Graph_t* g)
 void Graph::makeFullGraph ()
 {
     int nodeCount = 0, tempi [2];
-    float lon1, lat1, lon2, lat2;
+    float wt, lon1, lat1, lon2, lat2;
     std::vector <float> lats, lons;
     long long ni;
     typedef std::vector <long long>::iterator ll_Itr;
@@ -277,74 +293,80 @@ void Graph::makeFullGraph ()
     // values hold the indices for add the edges.
     for (Ways_Itr wi = ways.begin(); wi != ways.end(); ++wi)
     {
-        oneEdge.id = (*wi).id;
-        oneEdge.name = (*wi).name;
-        oneEdge.type = (*wi).type;
-
-        // Set up first origin node
-        ni = (*wi).nodes.front ();
-        assert ((umapitr = nodes.find (ni)) != nodes.end ());
-        // Add to nodes if not already there
-        if (nodeIndxFull.find (ni) == nodeIndxFull.end())
+        wt = getProfileWeight (&profile, (*wi).type);
+        // only proceed if highway type is in profile
+        if (wt > 0.0)
         {
-            oneVert.id = (*umapitr).first;
-            oneVert.lon = (*umapitr).second.first;
-            oneVert.lat = (*umapitr).second.second;
-            boost::add_vertex (oneVert, gFull);
-            tempi [0] = nodeCount;
-            nodeIndxFull [oneVert.id] = nodeCount++;
-        } else
-        {
-            tempi [0] = (*nodeIndxFull.find (ni)).second; // int index of ni
-        }
+            oneEdge.id = (*wi).id;
+            oneEdge.name = (*wi).name;
+            oneEdge.type = (*wi).type;
 
-        lats.resize (0);
-        lons.resize (0);
-        lons.push_back ((*umapitr).second.first);
-        lats.push_back ((*umapitr).second.second);
-
-        // Then iterate over the remaining nodes of that way
-        for (ll_Itr it = std::next ((*wi).nodes.begin ());
-                it != (*wi).nodes.end (); it++)
-        {
-            assert ((umapitr = nodes.find (*it)) != nodes.end ());
+            // Set up first origin node
+            ni = (*wi).nodes.front ();
+            assert ((umapitr = nodes.find (ni)) != nodes.end ());
             // Add to nodes if not already there
-            if (nodeIndxFull.find (*it) == nodeIndxFull.end ())
+            if (nodeIndxFull.find (ni) == nodeIndxFull.end())
             {
                 oneVert.id = (*umapitr).first;
                 oneVert.lon = (*umapitr).second.first;
                 oneVert.lat = (*umapitr).second.second;
                 boost::add_vertex (oneVert, gFull);
-                tempi [1] = nodeCount;
+                tempi [0] = nodeCount;
                 nodeIndxFull [oneVert.id] = nodeCount++;
             } else
             {
-                tempi [1] = (*nodeIndxFull.find (*it)).second;
+                tempi [0] = (*nodeIndxFull.find (ni)).second; // int index of ni
             }
-            
+
+            lats.resize (0);
+            lons.resize (0);
             lons.push_back ((*umapitr).second.first);
             lats.push_back ((*umapitr).second.second);
-            oneEdge.dist = calcDist (lons, lats);
 
-            // count edges (can also count in_edges for bidirectionalS)
-            /*
-            boost::tie (ei, ei_end) = out_edges (tempi [0], gFull);
-            int parallel_count = 0;
-            for ( ; ei != ei_end; ++ei)
-                if (boost::target (*ei, gFull) == tempi [1])
-                    parallel_count++;
-            */
+            // Then iterate over the remaining nodes of that way
+            for (ll_Itr it = std::next ((*wi).nodes.begin ());
+                    it != (*wi).nodes.end (); it++)
+            {
+                assert ((umapitr = nodes.find (*it)) != nodes.end ());
+                // Add to nodes if not already there
+                if (nodeIndxFull.find (*it) == nodeIndxFull.end ())
+                {
+                    oneVert.id = (*umapitr).first;
+                    oneVert.lon = (*umapitr).second.first;
+                    oneVert.lat = (*umapitr).second.second;
+                    boost::add_vertex (oneVert, gFull);
+                    tempi [1] = nodeCount;
+                    nodeIndxFull [oneVert.id] = nodeCount++;
+                } else
+                {
+                    tempi [1] = (*nodeIndxFull.find (*it)).second;
+                }
+                
+                lons.push_back ((*umapitr).second.first);
+                lats.push_back ((*umapitr).second.second);
+                oneEdge.dist = calcDist (lons, lats);
+                oneEdge.weight = oneEdge.dist / wt;
 
-            add_edge (tempi [0], tempi [1], &gFull, &oneEdge, (*wi).type);
-            if (!(*wi).oneway)
-                add_edge (tempi [1], tempi [0], &gFull, &oneEdge, (*wi).type);
+                // count edges (can also count in_edges for bidirectionalS)
+                /*
+                boost::tie (ei, ei_end) = out_edges (tempi [0], gFull);
+                int parallel_count = 0;
+                for ( ; ei != ei_end; ++ei)
+                    if (boost::target (*ei, gFull) == tempi [1])
+                        parallel_count++;
+                */
 
-            assert (lons.size () == lats.size ()); // can't ever fail
-            tempi [0] = tempi [1];
-            lons.erase (lons.begin ());
-            lats.erase (lats.begin ());
-        }
-    }
+                add_edge (tempi [0], tempi [1], &gFull, &oneEdge, (*wi).type);
+                if (!(*wi).oneway || !obey_oneway)
+                    add_edge (tempi [1], tempi [0], &gFull, &oneEdge, (*wi).type);
+
+                assert (lons.size () == lats.size ()); // can't ever fail
+                tempi [0] = tempi [1];
+                lons.erase (lons.begin ());
+                lats.erase (lats.begin ());
+            } // end for ll_Itr over nodes
+        } // end if wt > 0.0
+    } // end for Ways_itr over ways
 
     std::cout << "Full graph has " << num_vertices (gFull) << " vertices and " <<
         getConnected (&gFull) << " connected components" << std::endl;
@@ -390,7 +412,7 @@ void Graph::add_edge (int v1, int v2, Graph_t* g,
 void Graph::makeCompactGraph ()
 {
     int nodeCount = 0, tempi [2];
-    float lon1, lat1, lon2, lat2;
+    float wt, lon1, lat1, lon2, lat2;
     std::vector <float> lats, lons;
     long long ni;
     typedef std::vector <long long>::iterator ll_Itr;
@@ -404,16 +426,21 @@ void Graph::makeCompactGraph ()
     umapInt nodeCounts;
     for (Ways_Itr wi = ways.begin(); wi != ways.end(); ++wi)
     {
-        nodeCounts [(*wi).nodes.front ()] = 2;
-        nodeCounts [(*wi).nodes.back ()] = 2;
-        for (ll_Itr it = std::next ((*wi).nodes.begin ());
-                it != (*wi).nodes.end (); it++)
+        wt = getProfileWeight (&profile, (*wi).type);
+        // only proceed if highway type is in profile
+        if (wt > 0.0)
         {
-            assert ((umapitr = nodes.find (*it)) != nodes.end ());
-            if (nodeCounts.find (*it) == nodeCounts.end ())
-                nodeCounts [*it] = 1;
-            else
-                nodeCounts [*it]++;
+            nodeCounts [(*wi).nodes.front ()] = 2;
+            nodeCounts [(*wi).nodes.back ()] = 2;
+            for (ll_Itr it = std::next ((*wi).nodes.begin ());
+                    it != (*wi).nodes.end (); it++)
+            {
+                assert ((umapitr = nodes.find (*it)) != nodes.end ());
+                if (nodeCounts.find (*it) == nodeCounts.end ())
+                    nodeCounts [*it] = 1;
+                else
+                    nodeCounts [*it]++;
+            }
         }
     }
 
@@ -422,71 +449,77 @@ void Graph::makeCompactGraph ()
     // tempi values hold the indices for add the edges.
     for (Ways_Itr wi = ways.begin(); wi != ways.end(); ++wi)
     {
-        oneEdge.id = (*wi).id;
-        oneEdge.name = (*wi).name;
-        oneEdge.type = (*wi).type;
-
-        // Set up first origin node
-        ni = (*wi).nodes.front ();
-        assert ((umapitr = nodes.find (ni)) != nodes.end ());
-        // Add to nodes if not already there (and first nodes are always added)
-        if (nodeIndxCompact.find (ni) == nodeIndxCompact.end())
+        wt = getProfileWeight (&profile, (*wi).type);
+        // only proceed if highway type is in profile
+        if (wt > 0.0)
         {
-            oneVert.id = (*umapitr).first;
-            oneVert.lon = (*umapitr).second.first;
-            oneVert.lat = (*umapitr).second.second;
-            boost::add_vertex (oneVert, gCompact);
-            tempi [0] = nodeCount;
-            nodeIndxCompact [oneVert.id] = nodeCount++;
-        } else
-        {
-            tempi [0] = (*nodeIndxCompact.find (ni)).second; // int index of ni
-        }
+            oneEdge.id = (*wi).id;
+            oneEdge.name = (*wi).name;
+            oneEdge.type = (*wi).type;
 
-        lats.resize (0);
-        lons.resize (0);
-        lons.push_back ((*umapitr).second.first);
-        lats.push_back ((*umapitr).second.second);
+            // Set up first origin node
+            ni = (*wi).nodes.front ();
+            assert ((umapitr = nodes.find (ni)) != nodes.end ());
+            // Add to nodes if not already there (and first nodes are always added)
+            if (nodeIndxCompact.find (ni) == nodeIndxCompact.end())
+            {
+                oneVert.id = (*umapitr).first;
+                oneVert.lon = (*umapitr).second.first;
+                oneVert.lat = (*umapitr).second.second;
+                boost::add_vertex (oneVert, gCompact);
+                tempi [0] = nodeCount;
+                nodeIndxCompact [oneVert.id] = nodeCount++;
+            } else
+            {
+                tempi [0] = (*nodeIndxCompact.find (ni)).second; // int index of ni
+            }
 
-        // Then iterate over the remaining nodes of that way
-        oneEdge.dist = 0.0;
-        for (ll_Itr it = std::next ((*wi).nodes.begin ());
-                it != (*wi).nodes.end (); it++)
-        {
-            assert ((umapitr = nodes.find (*it)) != nodes.end ());
+            lats.resize (0);
+            lons.resize (0);
             lons.push_back ((*umapitr).second.first);
             lats.push_back ((*umapitr).second.second);
-            oneEdge.dist += calcDist (lons, lats);
 
-            // Nodes are only potentially added here if nodeCounts > 1,
-            // otherwise edge distance is simply accumulated.
-            if (nodeCounts [*it] > 1)
+            // Then iterate over the remaining nodes of that way
+            oneEdge.dist = 0.0;
+            for (ll_Itr it = std::next ((*wi).nodes.begin ());
+                    it != (*wi).nodes.end (); it++)
             {
-                // Add to nodes if not already there *AND* nodeCounts > 1
-                if (nodeIndxCompact.find (*it) == nodeIndxCompact.end ())
-                {
-                    oneVert.id = (*umapitr).first;
-                    oneVert.lon = (*umapitr).second.first;
-                    oneVert.lat = (*umapitr).second.second;
-                    boost::add_vertex (oneVert, gCompact);
-                    tempi [1] = nodeCount;
-                    nodeIndxCompact [oneVert.id] = nodeCount++;
-                } else
-                {
-                    tempi [1] = (*nodeIndxCompact.find (*it)).second;
-                }
-                add_edge (tempi [0], tempi [1], &gCompact, &oneEdge, (*wi).type);
-                if (!(*wi).oneway)
-                    add_edge (tempi [1], tempi [0], &gCompact, &oneEdge, (*wi).type);
+                assert ((umapitr = nodes.find (*it)) != nodes.end ());
+                lons.push_back ((*umapitr).second.first);
+                lats.push_back ((*umapitr).second.second);
+                oneEdge.dist += calcDist (lons, lats);
+                oneEdge.weight = oneEdge.dist / wt;
 
-                tempi [0] = tempi [1];
-                oneEdge.dist = 0.0;
-            }
-            assert (lons.size () == lats.size ()); // can't ever fail
-            lons.erase (lons.begin ());
-            lats.erase (lats.begin ());
-        }
-    }
+                // Nodes are only potentially added here if nodeCounts > 1,
+                // otherwise edge distance is simply accumulated.
+                if (nodeCounts [*it] > 1)
+                {
+                    // Add to nodes if not already there *AND* nodeCounts > 1
+                    if (nodeIndxCompact.find (*it) == nodeIndxCompact.end ())
+                    {
+                        oneVert.id = (*umapitr).first;
+                        oneVert.lon = (*umapitr).second.first;
+                        oneVert.lat = (*umapitr).second.second;
+                        boost::add_vertex (oneVert, gCompact);
+                        tempi [1] = nodeCount;
+                        nodeIndxCompact [oneVert.id] = nodeCount++;
+                    } else
+                    {
+                        tempi [1] = (*nodeIndxCompact.find (*it)).second;
+                    }
+                    add_edge (tempi [0], tempi [1], &gCompact, &oneEdge, (*wi).type);
+                    if (!(*wi).oneway || !obey_oneway)
+                        add_edge (tempi [1], tempi [0], &gCompact, &oneEdge, (*wi).type);
+
+                    tempi [0] = tempi [1];
+                    oneEdge.dist = 0.0;
+                }
+                assert (lons.size () == lats.size ()); // can't ever fail
+                lons.erase (lons.begin ());
+                lats.erase (lats.begin ());
+            } // end for ll_Itr over nodes
+        } // end if wt > 0.0
+    } // end for Ways_itr over ways
     nodeCounts.clear ();
 
     std::cout << "Compact graph has " << num_vertices (gCompact) << 
@@ -572,3 +605,75 @@ int Graph::getConnected (Graph_t *g)
 
     return num;
 } // end function getConnected
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                        FUNCTION::SETPROFILE                        **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+void Graph::setProfile (const std::string& profileName, 
+        std::vector <ProfilePair>* profile)
+{
+    int ipos;
+    float value;
+    std::string line, field;
+    std::ifstream in_file;
+
+    // Profile can also include an "obey" key. If this is 0, then oneway
+    // highways will *not* be obeyed, and will thus be added to the graph.
+    obey_oneway = true;
+
+    profile->resize (0);
+
+    in_file.open (profileName.c_str (), std::ifstream::in);
+    assert (!in_file.fail ());
+
+    while (!in_file.eof ())
+    {
+        getline (in_file, line, '\n');
+        if (!in_file.eof ())
+        {
+            ipos = line.find (',');
+            field = line.substr (0, ipos);
+            line = line.substr (ipos + 1, line.length () - ipos - 1);
+            value = atof (line.c_str ());
+
+            if (field.substr (0, 4) == "obey" && value == 0.0)
+                obey_oneway = false;
+
+            profile->push_back (std::make_pair (field, value));
+        }
+    }
+    in_file.close ();
+};
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                     FUNCTION::GETPROFILEWEIGHT                     **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+float Graph::getProfileWeight (std::vector <ProfilePair>* profile,
+        std::string highway_type)
+{
+    float wt = -1.0; // negative return if highway_type not in profile
+
+    for (std::vector <ProfilePair>::iterator itr = (*profile).begin();
+            itr != (*profile).end(); itr++)
+    {
+        if ((*itr).first == highway_type)
+        {
+            wt = (*itr).second;
+            break;
+        }
+    }
+
+    return wt;
+}
