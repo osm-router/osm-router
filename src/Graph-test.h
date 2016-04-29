@@ -103,6 +103,7 @@ class Graph: public Xml
         umapInt nodeIndx;
         umapPair_Itr node_itr;
 
+
     Graph (std::string file, float lonmin, float latmin, float lonmax, float latmax)
         : Xml (file, lonmin, latmin, lonmax, latmax)
     {
@@ -124,6 +125,7 @@ class Graph: public Xml
     void makeFullGraph ();
     float calcDist (std::vector <float> x, std::vector <float> y);
 };
+
 
 
 /************************************************************************
@@ -242,6 +244,11 @@ void Graph::makeFullGraph ()
     bundled_edge_type oneEdge;
     umapPair_Itr umapitr;
 
+    // The first of these is to check whether edges exist; the second to count
+    // them
+    typedef boost::graph_traits <Graph_t>::edge_descriptor edge_t;
+    boost::graph_traits <Graph_t>::out_edge_iterator ei, ei_end;
+
     // Vertices are added as new ones appear in ways. boost::graph numbers all
     // vertices with sequential integers indexed here in nodeIndx. The tempi
     // values hold the indices for add the edges.
@@ -294,6 +301,28 @@ void Graph::makeFullGraph ()
             
             lons.push_back ((*umapitr).second.first);
             lats.push_back ((*umapitr).second.second);
+
+            // Check whether edge exists:
+            std::pair <edge_t, bool> p = boost::edge (tempi [0], tempi [1], gFull);
+            if (p.second) 
+            {
+                edge_t e = *boost::out_edges (tempi [0], gFull).first;
+                if (gFull [e].type != (*wi).type)
+                    std::cout << "Repeated edge of different type: " <<
+                std::cout << "edge exists: " << p.first << ": (N=" <<
+                    gFull [e].name << "; ID=" << gFull [e].id << "; type=" <<
+                    gFull [e].type << " -> " << (*wi).type << std::endl;
+            }
+            // or count them:
+            /*
+            boost::tie (ei, ei_end) = out_edges (tempi [0], gFull);
+            int parallel_count = 0;
+            for ( ; ei != ei_end; ++ei)
+                if (boost::target (*ei, gFull) == tempi [1])
+                    parallel_count++;
+            if (parallel_count > 0)
+                std::cout << "---" << parallel_count << "---" << std::endl;
+            */
 
             assert (lons.size () == lats.size ()); // can't ever fail
             oneEdge.dist = calcDist (lons, lats);
