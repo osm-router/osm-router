@@ -83,9 +83,9 @@ struct bundled_vertex_type
 
 class Graph: public Xml
 {
-    // http://stackoverflow.com/questions/18791319/calculate-number-of-in-and-out-edges-in-a-boostgraph-vertex
+    // stackoverflow: "calculate-number-of-in-and-out-edges-in-a-boostgraph-vertex"
     // say only "out_degree" is available for directedS, while bidiretionalS
-    // enables also "in_degree"
+    // also enables "in_degree"
     //using Graph_t = boost::adjacency_list< boost::vecS, boost::vecS, 
     //      boost::bidirectionalS, bundled_vertex_type, bundled_edge_type >;
     using Graph_t = boost::adjacency_list< boost::vecS, boost::vecS, 
@@ -96,12 +96,12 @@ class Graph: public Xml
     using Vertex = boost::graph_traits<Graph_t>::vertex_descriptor;
 
     private:
-        Graph_t gFull;
+        Graph_t gFull, gCompact;
 
     protected:
 
     public:
-        umapInt nodeIndx;
+        umapInt nodeIndxFull, nodeIndxCompact;
         umapPair_Itr node_itr;
 
 
@@ -113,20 +113,27 @@ class Graph: public Xml
         std::cout << "Parsed " << nodes.size () << " nodes and " << 
             ways.size () << " ways" << std::endl;
 
-        nodeIndx.clear ();
+        nodeIndxFull.clear ();
+        nodeIndxCompact.clear ();
         makeFullGraph ();
-        dumpGraph ();
+        makeCompactGraph ();
+        //dumpWays ();
     }
     ~Graph ()
     {
-        nodeIndx.clear ();
+        nodeIndxFull.clear ();
+        nodeIndxCompact.clear ();
+        gFull.clear ();
+        gCompact.clear ();
     }
 
-    void dumpGraph ();
+    void dumpWays ();
+    void dumpGraph (Graph_t* g);
     void makeFullGraph ();
+    void makeCompactGraph ();
     float calcDist (std::vector <float> x, std::vector <float> y);
     void add_edge (int v1, int v2, Graph_t* g,
-            bundled_edge_type oneEdge, std::string new_highway_type);
+            bundled_edge_type* oneEdge, std::string new_highway_type);
 };
 
 
@@ -134,15 +141,15 @@ class Graph: public Xml
 /************************************************************************
  ************************************************************************
  **                                                                    **
- **                        FUNCTION::DUMPGRAPH                         **
+ **                        FUNCTION::DUMPWAYS                          **
  **                                                                    **
  ************************************************************************
  ************************************************************************/
 
-void Graph::dumpGraph ()
+void Graph::dumpWays ()
 {
-    // Actually dumps the raw ways from which the graph is made. Useful for
-    // visually inspecting connected components.
+    // All ways parsed from XML. Useful for visually inspecting connected
+    // components and comparing with results of dumpGraph.
     long long ni;
     std::vector <float> lats, lons;
     umapPair_Itr umapitr;
@@ -225,7 +232,21 @@ void Graph::dumpGraph ()
     }
     */
 
-} // end function Graph::dumpGraph
+} // end function Graph::dumpWays
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                        FUNCTION::DUMPGRAPH                         **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+void Graph::dumpGraph (Graph_t* g)
+{
+    // TODO: Write this!
+}
 
 
 /************************************************************************
@@ -251,7 +272,7 @@ void Graph::makeFullGraph ()
     //boost::graph_traits <Graph_t>::out_edge_iterator ei, ei_end;
 
     // Vertices are added as new ones appear in ways. boost::graph numbers all
-    // vertices with sequential integers indexed here in nodeIndx. The tempi
+    // vertices with sequential integers indexed here in nodeIndxFull. The tempi
     // values hold the indices for add the edges.
     for (Ways_Itr wi = ways.begin(); wi != ways.end(); ++wi)
     {
@@ -263,17 +284,17 @@ void Graph::makeFullGraph ()
         ni = (*wi).nodes.front ();
         assert ((umapitr = nodes.find (ni)) != nodes.end ());
         // Add to nodes if not already there
-        if (nodeIndx.find (ni) == nodeIndx.end())
+        if (nodeIndxFull.find (ni) == nodeIndxFull.end())
         {
             oneVert.id = (*umapitr).first;
             oneVert.lon = (*umapitr).second.first;
             oneVert.lat = (*umapitr).second.second;
             boost::add_vertex (oneVert, gFull);
             tempi [0] = nodeCount;
-            nodeIndx [oneVert.id] = nodeCount++;
+            nodeIndxFull [oneVert.id] = nodeCount++;
         } else
         {
-            tempi [0] = (*nodeIndx.find (ni)).second; // int index of ni
+            tempi [0] = (*nodeIndxFull.find (ni)).second; // int index of ni
         }
 
         lats.resize (0);
@@ -287,37 +308,35 @@ void Graph::makeFullGraph ()
         {
             assert ((umapitr = nodes.find (*it)) != nodes.end ());
             // Add to nodes if not already there
-            if (nodeIndx.find (*it) == nodeIndx.end ())
+            if (nodeIndxFull.find (*it) == nodeIndxFull.end ())
             {
                 oneVert.id = (*umapitr).first;
                 oneVert.lon = (*umapitr).second.first;
                 oneVert.lat = (*umapitr).second.second;
                 boost::add_vertex (oneVert, gFull);
                 tempi [1] = nodeCount;
-                nodeIndx [oneVert.id] = nodeCount++;
+                nodeIndxFull [oneVert.id] = nodeCount++;
             } else
             {
-                tempi [1] = (*nodeIndx.find (*it)).second;
+                tempi [1] = (*nodeIndxFull.find (*it)).second;
             }
             
             lons.push_back ((*umapitr).second.first);
             lats.push_back ((*umapitr).second.second);
             oneEdge.dist = calcDist (lons, lats);
 
-            // count edges:
+            // count edges (can also count in_edges for bidirectionalS)
             /*
             boost::tie (ei, ei_end) = out_edges (tempi [0], gFull);
             int parallel_count = 0;
             for ( ; ei != ei_end; ++ei)
                 if (boost::target (*ei, gFull) == tempi [1])
                     parallel_count++;
-            if (parallel_count > 0)
-                std::cout << "---" << parallel_count << "---" << std::endl;
             */
 
-            add_edge (tempi [0], tempi [1], &gFull, oneEdge, (*wi).type);
+            add_edge (tempi [0], tempi [1], &gFull, &oneEdge, (*wi).type);
             if (!(*wi).oneway)
-                add_edge (tempi [1], tempi [0], &gFull, oneEdge, (*wi).type);
+                add_edge (tempi [1], tempi [0], &gFull, &oneEdge, (*wi).type);
 
             assert (lons.size () == lats.size ()); // can't ever fail
             tempi [0] = tempi [1];
@@ -333,8 +352,16 @@ void Graph::makeFullGraph ()
 } // end function Graph::makeFullGraph
 
 
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                         FUNCTION::ADD_EDGE                         **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
 void Graph::add_edge (int v1, int v2, Graph_t* g,
-        bundled_edge_type oneEdge, std::string new_highway_type)
+        bundled_edge_type* oneEdge, std::string new_highway_type)
 {
     typedef boost::graph_traits <Graph_t>::edge_descriptor edge_t;
     std::pair <edge_t, bool> edge_p = boost::edge (v1, v2, *g);
@@ -348,9 +375,126 @@ void Graph::add_edge (int v1, int v2, Graph_t* g,
             (*g)[e].type << " -> " << new_highway_type << std::endl;
     } else
     {
-        boost::add_edge (v1, v2, oneEdge, *g);
+        boost::add_edge (v1, v2, *oneEdge, *g);
     }
 } // end function Graph::add_edge
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                     FUNCTION::MAKECOMPACTGRAPH                     **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+void Graph::makeCompactGraph ()
+{
+    int nodeCount = 0, tempi [2];
+    float lon1, lat1, lon2, lat2;
+    std::vector <float> lats, lons;
+    long long ni;
+    typedef std::vector <long long>::iterator ll_Itr;
+    bundled_vertex_type oneVert;
+    bundled_edge_type oneEdge;
+    umapPair_Itr umapitr;
+
+    // First count all occurrences of each node so compact graph includes only
+    // those nodes with counts > 1. To start with, however, all start and end
+    // nodes of each way are given counts of 2 to ensure they're included.
+    umapInt nodeCounts;
+    for (Ways_Itr wi = ways.begin(); wi != ways.end(); ++wi)
+    {
+        nodeCounts [(*wi).nodes.front ()] = 2;
+        nodeCounts [(*wi).nodes.back ()] = 2;
+        for (ll_Itr it = std::next ((*wi).nodes.begin ());
+                it != (*wi).nodes.end (); it++)
+        {
+            assert ((umapitr = nodes.find (*it)) != nodes.end ());
+            if (nodeCounts.find (*it) == nodeCounts.end ())
+                nodeCounts [*it] = 1;
+            else
+                nodeCounts [*it]++;
+        }
+    }
+
+    // Vertices are added as new ones appear in ways. boost::graph numbers all
+    // vertices with sequential integers indexed here in nodeIndxCompact. The
+    // tempi values hold the indices for add the edges.
+    for (Ways_Itr wi = ways.begin(); wi != ways.end(); ++wi)
+    {
+        oneEdge.id = (*wi).id;
+        oneEdge.name = (*wi).name;
+        oneEdge.type = (*wi).type;
+
+        // Set up first origin node
+        ni = (*wi).nodes.front ();
+        assert ((umapitr = nodes.find (ni)) != nodes.end ());
+        // Add to nodes if not already there (and first nodes are always added)
+        if (nodeIndxCompact.find (ni) == nodeIndxCompact.end())
+        {
+            oneVert.id = (*umapitr).first;
+            oneVert.lon = (*umapitr).second.first;
+            oneVert.lat = (*umapitr).second.second;
+            boost::add_vertex (oneVert, gCompact);
+            tempi [0] = nodeCount;
+            nodeIndxCompact [oneVert.id] = nodeCount++;
+        } else
+        {
+            tempi [0] = (*nodeIndxCompact.find (ni)).second; // int index of ni
+        }
+
+        lats.resize (0);
+        lons.resize (0);
+        lons.push_back ((*umapitr).second.first);
+        lats.push_back ((*umapitr).second.second);
+
+        // Then iterate over the remaining nodes of that way
+        oneEdge.dist = 0.0;
+        for (ll_Itr it = std::next ((*wi).nodes.begin ());
+                it != (*wi).nodes.end (); it++)
+        {
+            assert ((umapitr = nodes.find (*it)) != nodes.end ());
+            lons.push_back ((*umapitr).second.first);
+            lats.push_back ((*umapitr).second.second);
+            oneEdge.dist += calcDist (lons, lats);
+
+            // Nodes are only potentially added here if nodeCounts > 1,
+            // otherwise edge distance is simply accumulated.
+            if (nodeCounts [*it] > 1)
+            {
+                // Add to nodes if not already there *AND* nodeCounts > 1
+                if (nodeIndxCompact.find (*it) == nodeIndxCompact.end ())
+                {
+                    oneVert.id = (*umapitr).first;
+                    oneVert.lon = (*umapitr).second.first;
+                    oneVert.lat = (*umapitr).second.second;
+                    boost::add_vertex (oneVert, gCompact);
+                    tempi [1] = nodeCount;
+                    nodeIndxCompact [oneVert.id] = nodeCount++;
+                } else
+                {
+                    tempi [1] = (*nodeIndxCompact.find (*it)).second;
+                }
+                add_edge (tempi [0], tempi [1], &gCompact, &oneEdge, (*wi).type);
+                if (!(*wi).oneway)
+                    add_edge (tempi [1], tempi [0], &gCompact, &oneEdge, (*wi).type);
+
+                tempi [0] = tempi [1];
+                oneEdge.dist = 0.0;
+            }
+            assert (lons.size () == lats.size ()); // can't ever fail
+            lons.erase (lons.begin ());
+            lats.erase (lats.begin ());
+        }
+    }
+    nodeCounts.clear ();
+
+    std::vector <int> compvec (num_vertices (gCompact));
+    tempi [0] = boost::connected_components (gCompact, &compvec [0]);
+    std::cout << "Graph has " << num_vertices (gCompact) << " vertices and " <<
+        tempi [0] << " connected components" << std::endl;
+} // end function Graph::makeCompactGraph
 
 
 /************************************************************************
