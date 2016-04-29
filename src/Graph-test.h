@@ -16,8 +16,8 @@
  *  You should have received a copy of the GNU General Public License along with
  *  osm-router.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  Author:     Mark Padgham / Andreas Petutschnig
- *  E-Mail:     mark.padgham@email.com / andras@petutschnig.de
+ *  Author:     Mark Padgham 
+ *  E-Mail:     mark.padgham@email.com 
  *
  *  Description:    C++ implementation of OSM router using boost::graph.
  *                  Designed to work in a designated area, and so reads data
@@ -93,8 +93,13 @@ struct bundled_vertex_type
 
 class Graph: public Xml
 {
+    // http://stackoverflow.com/questions/18791319/calculate-number-of-in-and-out-edges-in-a-boostgraph-vertex
+    // say only "out_degree" is available for directedS, while bidiretionalS
+    // enables also "in_degree"
+    //using Graph_t = boost::adjacency_list< boost::vecS, boost::vecS, 
+    //      boost::directedS, bundled_vertex_type, bundled_edge_type >;
     using Graph_t = boost::adjacency_list< boost::vecS, boost::vecS, 
-          boost::directedS, bundled_vertex_type, bundled_edge_type >;
+          boost::bidirectionalS, bundled_vertex_type, bundled_edge_type >;
 
     using Vertex = boost::graph_traits<Graph_t>::vertex_descriptor;
 
@@ -105,7 +110,6 @@ class Graph: public Xml
 
     public:
         umapInt nodeNames;
-        umapPair allNodes;
         umapPair_Itr node_itr;
         boost::unordered_set <long long> terminalNodes;
 
@@ -118,7 +122,9 @@ class Graph: public Xml
             ways.size () << " ways" << std::endl;
 
         nodeNames.clear ();
-        fillGraph ();
+        makeFullGraph ();
+        dumpGraph ();
+        makeCompactGraph ();
     }
     ~Graph ()
     {
@@ -126,22 +132,81 @@ class Graph: public Xml
         terminalNodes.clear ();
     }
 
-    void fillGraph ();
+    void dumpGraph ();
+    void makeFullGraph ();
+    void makeCompactGraph ();
     float calcDist (std::vector <float> x, std::vector <float> y);
 };
-
 
 
 /************************************************************************
  ************************************************************************
  **                                                                    **
- **                        FUNCTION::FILLGRAPH                         **
+ **                        FUNCTION::DUMPGRAPH                         **
  **                                                                    **
  ************************************************************************
  ************************************************************************/
 
-void Graph::fillGraph ()
+void Graph::dumpGraph ()
 {
+    // Actually dumps the raw ways from which the graph is made. Useful for
+    // visually inspecting connected components.
+    long long ni;
+    std::vector <float> lats, lons;
+    umapPair_Itr umapitr;
+    typedef std::vector <long long>::iterator ll_Itr;
+    std::ofstream out_file;
+
+    out_file.open ("junk.txt", std::ofstream::out);
+
+    for (Ways_Itr wi = ways.begin(); wi != ways.end(); ++wi)
+    {
+        // Set up first origin node
+        ni = (*wi).nodes.front ();
+        assert ((umapitr = nodes.find (ni)) != nodes.end ());
+        lats.resize (0);
+        lons.resize (0);
+        lons.push_back ((*umapitr).second.first);
+        lats.push_back ((*umapitr).second.second);
+        assert (nodeNames.find (ni) != nodeNames.end ());
+
+        // Then iterate over the remaining nodes of that way
+        for (ll_Itr it = std::next ((*wi).nodes.begin ());
+                it != (*wi).nodes.end (); it++)
+        {
+            assert ((umapitr = nodes.find (*it)) != nodes.end ());
+            lons.push_back ((*umapitr).second.first);
+            lats.push_back ((*umapitr).second.second);
+            assert (nodeNames.find (*it) != nodeNames.end ());
+
+            assert (lons.size () == lats.size ()); // can't ever fail
+            if (lons.size () == 2) // then add edge
+            {
+                out_file << lons [0] << "," << lats [0] << "," <<
+                    lons [1] << "," << lats [1] << std::endl;
+                lons.erase (lons.begin ());
+                lats.erase (lats.begin ());
+            }
+        }
+    }
+    out_file.close ();
+
+} // end function Graph::dumpGraph
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                      FUNCTION::MAKEFULLGRAPH                       **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+void Graph::makeFullGraph ()
+{
+    // The full graph has to be constructed so that distances can be accurately
+    // calculated for the compact graph. This routine also fills terminalNodes
+    // so that compactGraph can subsequently be made
     int tempi [2];
     float lon1, lat1, lon2, lat2;
     std::vector <float> lats, lons;
@@ -228,6 +293,10 @@ void Graph::fillGraph ()
     std::cout << "There are " << terminalNodes.size () <<
         " terminal nodes and " << nodeList.size () << " non-terminal" << 
         "; total = " << tempi [0] << std::endl;
+    // This total should be less than the number of vertices in gFull because
+    // it only includes nodes which actually arise within ways, while gFull is
+    // created from all nodes returned from the overpass query regardless of
+    // whether they are part of ways or not.
 
     std::vector <int> compvec (num_vertices (gFull));
     tempi [0] = boost::connected_components (gFull, &compvec [0]);
@@ -235,8 +304,98 @@ void Graph::fillGraph ()
         tempi [0] << " connected components" << std::endl;
 
     nodeList.clear ();
-} // end function Graph::fillGraph
+} // end function Graph::makeFullGraph
 
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                     FUNCTION::MAKECOMPACTGRAPH                     **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+void Graph::makeCompactGraph ()
+{
+    int tempi [2];
+    float dist;
+    std::vector <float> lons, lats;
+    long long ni;
+    bundled_vertex_type oneVert;
+    bundled_edge_type oneEdge;
+    umapPair_Itr umapitr;
+
+    // Vertices first
+    for (boost::unordered_set <long long>::iterator it = terminalNodes.begin ();
+            it != terminalNodes.end (); ++it)
+    {
+        assert ((umapitr = nodes.find (*it)) != nodes.end ());
+        oneVert.id = (*umapitr).first;
+        oneVert.lon = ((*umapitr).second).first;
+        oneVert.lat = ((*umapitr).second).second;
+        boost::add_vertex (oneVert, gCompact);
+    }
+
+    std::cout << "Compact Graph has " << num_vertices (gCompact) << 
+        " vertices" << std::endl;
+
+    // Then edges
+    // from http://theboostcpplibraries.com/boost.graph-vertices-and-edges,
+    // but the remainder doesn't work
+    typedef boost::graph_traits <Graph_t>::vertex_iterator viter;
+    Graph_t::out_edge_iterator eit, eend;
+    for (std::pair <viter, viter> vp = vertices (gFull);
+            vp.first != vp.second; ++vp.first)
+    {
+        std::tie (eit, eend) = boost::out_edges (*vp.first, gFull);
+    }
+
+    // from
+    // https://valelab.ucsf.edu/svn/3rdpartypublic/boost/libs/graph/test/grid_graph_test.cpp
+    typedef boost::graph_traits <Graph_t>::vertices_size_type vertices_size_type;
+    typedef boost::graph_traits <Graph_t>::vertex_descriptor vertex_descriptor;
+    typedef boost::graph_traits <Graph_t>::edges_size_type edges_size_type;
+    typedef boost::graph_traits <Graph_t>::edge_descriptor edge_descriptor;
+    const int nc = 7;
+    int nedges, counts [nc] = {0, 0, 0, 0, 0, 0};
+    BOOST_FOREACH (vertex_descriptor current_vertex, vertices (gFull))
+    {
+        edges_size_type out_edges_count = 0; 
+        edges_size_type in_edges_count = 0;
+        std::cout << "[O]";
+        BOOST_FOREACH (edge_descriptor out_edge, 
+                boost::out_edges (current_vertex, gFull))
+        {
+            out_edges_count++;
+            std::cout << get (boost::vertex_index, gFull, 
+                    source (out_edge, gFull)) << "-";
+        }
+        std::cout << "---[I]";
+        BOOST_FOREACH (edge_descriptor in_edge, 
+                boost::in_edges (current_vertex, gFull))
+        {
+            std::cout << get (boost::vertex_index, gFull, 
+                    source (in_edge, gFull)) << "-";
+        }
+        std::cout << std::endl;
+        // These include double counts:
+        out_edges_count = boost::out_degree (current_vertex, gFull);
+        in_edges_count = boost::in_degree (current_vertex, gFull);
+        nedges = (int) out_edges_count + (int) in_edges_count;
+        if (nedges < nc)
+            counts [nedges]++;
+    }
+    std::cout << "#vertices with (";
+    for (int i=0; i<(nc - 1); i++) 
+        std::cout << i << ", ";
+    std::cout << nc - 1 << ") edges = (";
+    for (int i=0; i<(nc - 1); i++)
+        std::cout << counts [i] << ", ";
+    std::cout << counts [nc - 1] << ")" << std::endl;
+
+    // TODO: Why are there vertices with multiple versions of same out-edges?
+
+} // end function Graph::makeCompactGraph
 
 /************************************************************************
  ************************************************************************

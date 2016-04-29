@@ -16,8 +16,8 @@
  *  You should have received a copy of the GNU General Public License along with
  *  osm-router.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  Author:     Mark Padgham / Andreas Petutschnig
- *  E-Mail:     mark.padgham@email.com / andras@petutschnig.de
+ *  Author:     Mark Padgham 
+ *  E-Mail:     mark.padgham@email.com 
  *
  *  Description:    C++ implementation of OSM router using boost::graph.
  *                  Designed to work in a designated area, and so reads data
