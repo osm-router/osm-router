@@ -75,6 +75,7 @@ struct RawWay
 
 struct Way
 {
+    bool oneway;
     long long id;
     std::string type, name; // type is highway type (value for highway key)
     std::vector <std::pair <std::string, std::string>> key_val;
@@ -318,15 +319,19 @@ void Xml::traverseXML (const boost::property_tree::ptree& pt)
             way.id = rway.id;
             way.name = way.type = "";
             way.key_val.resize (0);
+            way.oneway = false;
+            // TODO: oneway also exists is pairs:
+            // k='oneway' v='yes'
+            // k='oneway:bicycle' v='no'
             for (int i=0; i<rway.key.size (); i++)
                 if (rway.key [i] == "name")
                     way.name = rway.value [i];
                 else if (rway.key [i] == "highway")
                     way.type = rway.value [i];
+                else if (rway.key [i] == "oneway" && rway.value [i] == "yes")
+                    way.oneway = true;
                 else
-                {
                     way.key_val.push_back (std::make_pair (rway.key [i], rway.value [i]));
-                }
 
             // Then copy nodes from rway to way. 
             way.nodes.resize (0);

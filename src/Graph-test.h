@@ -62,6 +62,7 @@ std::size_t hash_value(const int &i)
 // edge and vertex bundles for the boost::graph
 struct bundled_edge_type
 { 
+    bool oneway;
     long long id;
     std::string name, type;
     // key-val pairs not implemented yet
@@ -87,10 +88,10 @@ class Graph: public Xml
     // enables also "in_degree"
     //using Graph_t = boost::adjacency_list< boost::vecS, boost::vecS, 
     //      boost::bidirectionalS, bundled_vertex_type, bundled_edge_type >;
-    //using Graph_t = boost::adjacency_list< boost::vecS, boost::vecS, 
-    //      boost::directedS, bundled_vertex_type, bundled_edge_type >;
     using Graph_t = boost::adjacency_list< boost::vecS, boost::vecS, 
-          boost::undirectedS, bundled_vertex_type, bundled_edge_type >;
+          boost::directedS, bundled_vertex_type, bundled_edge_type >;
+    //using Graph_t = boost::adjacency_list< boost::vecS, boost::vecS, 
+    //      boost::undirectedS, bundled_vertex_type, bundled_edge_type >;
 
     using Vertex = boost::graph_traits<Graph_t>::vertex_descriptor;
 
@@ -124,6 +125,8 @@ class Graph: public Xml
     void dumpGraph ();
     void makeFullGraph ();
     float calcDist (std::vector <float> x, std::vector <float> y);
+    void add_edge (int v1, int v2, Graph_t* g,
+            bundled_edge_type oneEdge, std::string new_highway_type);
 };
 
 
@@ -244,10 +247,8 @@ void Graph::makeFullGraph ()
     bundled_edge_type oneEdge;
     umapPair_Itr umapitr;
 
-    // The first of these is to check whether edges exist; the second to count
-    // them
-    typedef boost::graph_traits <Graph_t>::edge_descriptor edge_t;
-    boost::graph_traits <Graph_t>::out_edge_iterator ei, ei_end;
+    // For edge counting
+    //boost::graph_traits <Graph_t>::out_edge_iterator ei, ei_end;
 
     // Vertices are added as new ones appear in ways. boost::graph numbers all
     // vertices with sequential integers indexed here in nodeIndx. The tempi
@@ -301,19 +302,9 @@ void Graph::makeFullGraph ()
             
             lons.push_back ((*umapitr).second.first);
             lats.push_back ((*umapitr).second.second);
+            oneEdge.dist = calcDist (lons, lats);
 
-            // Check whether edge exists:
-            std::pair <edge_t, bool> p = boost::edge (tempi [0], tempi [1], gFull);
-            if (p.second) 
-            {
-                edge_t e = *boost::out_edges (tempi [0], gFull).first;
-                if (gFull [e].type != (*wi).type)
-                    std::cout << "Repeated edge of different type: " <<
-                std::cout << "edge exists: " << p.first << ": (N=" <<
-                    gFull [e].name << "; ID=" << gFull [e].id << "; type=" <<
-                    gFull [e].type << " -> " << (*wi).type << std::endl;
-            }
-            // or count them:
+            // count edges:
             /*
             boost::tie (ei, ei_end) = out_edges (tempi [0], gFull);
             int parallel_count = 0;
@@ -324,9 +315,11 @@ void Graph::makeFullGraph ()
                 std::cout << "---" << parallel_count << "---" << std::endl;
             */
 
+            add_edge (tempi [0], tempi [1], &gFull, oneEdge, (*wi).type);
+            if (!(*wi).oneway)
+                add_edge (tempi [1], tempi [0], &gFull, oneEdge, (*wi).type);
+
             assert (lons.size () == lats.size ()); // can't ever fail
-            oneEdge.dist = calcDist (lons, lats);
-            boost::add_edge (tempi [0], tempi [1], oneEdge, gFull);
             tempi [0] = tempi [1];
             lons.erase (lons.begin ());
             lats.erase (lats.begin ());
@@ -339,6 +332,25 @@ void Graph::makeFullGraph ()
         tempi [0] << " connected components" << std::endl;
 } // end function Graph::makeFullGraph
 
+
+void Graph::add_edge (int v1, int v2, Graph_t* g,
+        bundled_edge_type oneEdge, std::string new_highway_type)
+{
+    typedef boost::graph_traits <Graph_t>::edge_descriptor edge_t;
+    std::pair <edge_t, bool> edge_p = boost::edge (v1, v2, *g);
+    if (edge_p.second) // edge already exists
+    {
+        edge_t e = *boost::out_edges (v1, *g).first;
+        if ((*g)[e].type != new_highway_type)
+            std::cout << "Repeated edge of different type: " <<
+        std::cout << "edge exists: " << edge_p.first << ": (N=" <<
+            (*g)[e].name << "; ID=" << (*g)[e].id << "; type=" <<
+            (*g)[e].type << " -> " << new_highway_type << std::endl;
+    } else
+    {
+        boost::add_edge (v1, v2, oneEdge, *g);
+    }
+} // end function Graph::add_edge
 
 
 /************************************************************************
