@@ -110,8 +110,8 @@ class Graph: public Xml
     {
         // Construction fills vectors of "ways" and "nodes" from Xml class
         // These then need to be used to fill the boost::graph
-        std::cout << "Parsed " << nodes.size () << " nodes and " << 
-            ways.size () << " ways" << std::endl;
+        // #nodes = nodes.size ()
+        // #ways = ways.size ()
 
         nodeIndxFull.clear ();
         nodeIndxCompact.clear ();
@@ -134,6 +134,7 @@ class Graph: public Xml
     float calcDist (std::vector <float> x, std::vector <float> y);
     void add_edge (int v1, int v2, Graph_t* g,
             bundled_edge_type* oneEdge, std::string new_highway_type);
+    int getConnected (Graph_t *g);
 };
 
 
@@ -345,10 +346,8 @@ void Graph::makeFullGraph ()
         }
     }
 
-    std::vector <int> compvec (num_vertices (gFull));
-    tempi [0] = boost::connected_components (gFull, &compvec [0]);
-    std::cout << "Graph has " << num_vertices (gFull) << " vertices and " <<
-        tempi [0] << " connected components" << std::endl;
+    std::cout << "Full graph has " << num_vertices (gFull) << " vertices and " <<
+        getConnected (&gFull) << " connected components" << std::endl;
 } // end function Graph::makeFullGraph
 
 
@@ -490,10 +489,9 @@ void Graph::makeCompactGraph ()
     }
     nodeCounts.clear ();
 
-    std::vector <int> compvec (num_vertices (gCompact));
-    tempi [0] = boost::connected_components (gCompact, &compvec [0]);
-    std::cout << "Graph has " << num_vertices (gCompact) << " vertices and " <<
-        tempi [0] << " connected components" << std::endl;
+    std::cout << "Compact graph has " << num_vertices (gCompact) << 
+        " vertices and " << getConnected (&gCompact) << 
+        " connected components" << std::endl;
 } // end function Graph::makeCompactGraph
 
 
@@ -531,3 +529,46 @@ float Graph::calcDist (std::vector <float> x, std::vector <float> y)
     return dsum; // in kilometres!
 } // end function Graph::calcDist
 
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                       FUNCTION::GETCONNECTED                       **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int Graph::getConnected (Graph_t *g)
+{
+    std::vector <int> compvec (num_vertices (*g));
+    int num = boost::connected_components (*g, &compvec[0]);
+
+    // Then store component info in vertices
+    /*
+    typedef boost::graph_traits <Graph_t>::vertex_iterator viter;
+    std::pair <viter, viter> vp;
+    for (vp = vertices (*g); vp.first != vp.second; ++vp.first)
+        vertex_component [*vp.first] = compvec [*vp.first];
+     */
+
+    // Alternative:
+    boost::property_map< Graph_t, int bundled_vertex_type::* >::type 
+        vertex_component = boost::get (&bundled_vertex_type::component, (*g));
+    auto vs = boost::vertices (*g);
+    for (auto vit = vs.first; vit != vs.second; ++vit)
+        vertex_component [*vit] = compvec [*vit];
+
+    // Optional filtering of component = 0:
+    /*
+    in_component_0 <VertMap> filter (boost::get 
+        (&bundled_vertex_type::component, (*g)));
+    boost::filtered_graph <Graph, in_component_0 <VertMap> > fg ((*g), filter);
+    // Next lines reveal filtering does not actually reduce the graph
+    auto vsfg = boost::vertices (fg);
+    for (auto vit = vsfg.first; vit != vsfg.second; ++vit)
+        std::cout << *vit << std::endl;
+     */
+
+    return num;
+} // end function getConnected
