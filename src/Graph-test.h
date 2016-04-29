@@ -34,17 +34,6 @@
  ***************************************************************************/
 
 
-/*
- * The boost::graphs are constructed in two phases:
- * (1) A graph "gFull" is constructed from all OSM nodes and highways, and used
- * to identify both the largest connected component and all terminal or junction
- * nodes (simply as those that appear in multiple different ways). The routing
- * points are then mapped onto the nearest vertices within this largest
- * component, and these vertices are also added to terminalNodes.  (2) A second
- * reading of the data is used to make "gCompact" which only has terminalNodes
- * as vertices, and edge distances as traced along all intermediate nodes.
- */
-
 #include "xml-parser.h"
 
 #include <boost/unordered_set.hpp>
@@ -97,21 +86,22 @@ class Graph: public Xml
     // say only "out_degree" is available for directedS, while bidiretionalS
     // enables also "in_degree"
     //using Graph_t = boost::adjacency_list< boost::vecS, boost::vecS, 
+    //      boost::bidirectionalS, bundled_vertex_type, bundled_edge_type >;
+    //using Graph_t = boost::adjacency_list< boost::vecS, boost::vecS, 
     //      boost::directedS, bundled_vertex_type, bundled_edge_type >;
     using Graph_t = boost::adjacency_list< boost::vecS, boost::vecS, 
-          boost::bidirectionalS, bundled_vertex_type, bundled_edge_type >;
+          boost::undirectedS, bundled_vertex_type, bundled_edge_type >;
 
     using Vertex = boost::graph_traits<Graph_t>::vertex_descriptor;
 
     private:
-        Graph_t gFull, gCompact;
+        Graph_t gFull;
 
     protected:
 
     public:
-        umapInt nodeNames;
+        umapInt nodeIndx;
         umapPair_Itr node_itr;
-        boost::unordered_set <long long> terminalNodes;
 
     Graph (std::string file, float lonmin, float latmin, float lonmax, float latmax)
         : Xml (file, lonmin, latmin, lonmax, latmax)
@@ -121,20 +111,17 @@ class Graph: public Xml
         std::cout << "Parsed " << nodes.size () << " nodes and " << 
             ways.size () << " ways" << std::endl;
 
-        nodeNames.clear ();
+        nodeIndx.clear ();
         makeFullGraph ();
         dumpGraph ();
-        makeCompactGraph ();
     }
     ~Graph ()
     {
-        nodeNames.clear ();
-        terminalNodes.clear ();
+        nodeIndx.clear ();
     }
 
     void dumpGraph ();
     void makeFullGraph ();
-    void makeCompactGraph ();
     float calcDist (std::vector <float> x, std::vector <float> y);
 };
 
@@ -168,7 +155,6 @@ void Graph::dumpGraph ()
         lons.resize (0);
         lons.push_back ((*umapitr).second.first);
         lats.push_back ((*umapitr).second.second);
-        assert (nodeNames.find (ni) != nodeNames.end ());
 
         // Then iterate over the remaining nodes of that way
         for (ll_Itr it = std::next ((*wi).nodes.begin ());
@@ -177,7 +163,6 @@ void Graph::dumpGraph ()
             assert ((umapitr = nodes.find (*it)) != nodes.end ());
             lons.push_back ((*umapitr).second.first);
             lats.push_back ((*umapitr).second.second);
-            assert (nodeNames.find (*it) != nodeNames.end ());
 
             assert (lons.size () == lats.size ()); // can't ever fail
             if (lons.size () == 2) // then add edge
@@ -190,6 +175,50 @@ void Graph::dumpGraph ()
         }
     }
     out_file.close ();
+
+    // R code to examine output:
+    /*
+    plotgraph <- function ()
+    {
+        fname <- "./build/junk.txt"
+        dat <- read.csv (fname, sep=",", header=FALSE)
+        xlims <- range (c (dat [,1], dat [,3]))
+        ylims <- range (c (dat [,2], dat [,4]))
+        #xlims <- mean (xlims) + c (-0.05, 0.05) * diff (xlims)
+        #ylims <- min (ylims) + 0.35 * diff (ylims) + c (-0.05, 0.05) * diff (ylims)
+        plot.new ()
+        par (mar=rep (0, 4))
+        plot (NULL, NULL, xlim=xlims, ylim=ylims,
+              xaxt="n", yaxt="n", xlab="", ylab="")
+        junk <- apply (dat, 1, function (i)
+                       lines (c (i [1], i [3]), c (i [2], i [4])))
+
+        x <- c (dat [,1], dat [,3])
+        y <- c (dat [,2], dat [,4])
+        dat2 <- cbind (x, y)
+        dat3 <- dat2 [which (!duplicated (dat2)),]
+        points (dat2, pch=1)
+
+        # zoom function (close window to stop)
+        flag <- FALSE
+        while (!flag)
+        {
+            lims <- par ("usr")
+            loc <- locator (n=1)
+            xlims <- loc$x + c (-0.25, 0.25) * diff (lims [1:2])
+            xlims [1] <- max (c (xlims [1], min (x)))
+            xlims [2] <- min (c (xlims [2], max (x)))
+            ylims <- loc$y + c (-0.25, 0.25) * diff (lims [3:4])
+            ylims [1] <- max (c (ylims [1], min (y)))
+            ylims [2] <- min (c (ylims [2], max (y)))
+            plot (NULL, NULL, xlim=xlims, ylim=ylims,
+                  xaxt="n", yaxt="n", xlab="", ylab="")
+            junk <- apply (dat, 1, function (i)
+                           lines (c (i [1], i [3]), c (i [2], i [4])))
+            points (dat2, pch=1)
+        }
+    }
+    */
 
 } // end function Graph::dumpGraph
 
@@ -204,44 +233,18 @@ void Graph::dumpGraph ()
 
 void Graph::makeFullGraph ()
 {
-    // The full graph has to be constructed so that distances can be accurately
-    // calculated for the compact graph. This routine also fills terminalNodes
-    // so that compactGraph can subsequently be made
-    int tempi [2];
+    int nodeCount = 0, tempi [2];
     float lon1, lat1, lon2, lat2;
     std::vector <float> lats, lons;
     long long ni;
-    boost::unordered_set <long long> nodeList;
+    typedef std::vector <long long>::iterator ll_Itr;
     bundled_vertex_type oneVert;
     bundled_edge_type oneEdge;
     umapPair_Itr umapitr;
-    typedef std::vector <long long>::iterator ll_Itr;
 
-    // Fill vertices. These are automatically numbered consecutively, so
-    // nodeNames is also indexed simultaneously to provide references for edge
-    // insertion.
-    tempi [0] = 0;
-    for (umapPair_Itr it = nodes.begin (); it != nodes.end (); ++it)
-    {
-        oneVert.id = (*it).first;
-        oneVert.lon = (*it).second.first;
-        oneVert.lat = (*it).second.second;
-        boost::add_vertex (oneVert, gFull);
-        nodeNames [oneVert.id] = tempi [0]++;
-    }
-
-    nodeList.clear ();
-    terminalNodes.clear ();
-    // First put all first and last nodes of each way into terminalNodes
-    for (Ways_Itr wi = ways.begin(); wi != ways.end(); ++wi)
-    {
-        if (terminalNodes.find ((*wi).nodes.front ()) == terminalNodes.end())
-            terminalNodes.insert ((*wi).nodes.front ());
-        if (terminalNodes.find ((*wi).nodes.back ()) == terminalNodes.end())
-            terminalNodes.insert ((*wi).nodes.back ());
-    }
-    
-    // Then fill edges
+    // Vertices are added as new ones appear in ways. boost::graph numbers all
+    // vertices with sequential integers indexed here in nodeIndx. The tempi
+    // values hold the indices for add the edges.
     for (Ways_Itr wi = ways.begin(); wi != ways.end(); ++wi)
     {
         oneEdge.id = (*wi).id;
@@ -251,151 +254,63 @@ void Graph::makeFullGraph ()
         // Set up first origin node
         ni = (*wi).nodes.front ();
         assert ((umapitr = nodes.find (ni)) != nodes.end ());
+        // Add to nodes if not already there
+        if (nodeIndx.find (ni) == nodeIndx.end())
+        {
+            oneVert.id = (*umapitr).first;
+            oneVert.lon = (*umapitr).second.first;
+            oneVert.lat = (*umapitr).second.second;
+            boost::add_vertex (oneVert, gFull);
+            tempi [0] = nodeCount;
+            nodeIndx [oneVert.id] = nodeCount++;
+        } else
+        {
+            tempi [0] = (*nodeIndx.find (ni)).second; // int index of ni
+        }
+
         lats.resize (0);
         lons.resize (0);
         lons.push_back ((*umapitr).second.first);
         lats.push_back ((*umapitr).second.second);
-        assert (nodeNames.find (ni) != nodeNames.end ());
-        tempi [0] = (*nodeNames.find (ni)).second; // int index of node ID
 
         // Then iterate over the remaining nodes of that way
         for (ll_Itr it = std::next ((*wi).nodes.begin ());
                 it != (*wi).nodes.end (); it++)
         {
             assert ((umapitr = nodes.find (*it)) != nodes.end ());
+            // Add to nodes if not already there
+            if (nodeIndx.find (*it) == nodeIndx.end ())
+            {
+                oneVert.id = (*umapitr).first;
+                oneVert.lon = (*umapitr).second.first;
+                oneVert.lat = (*umapitr).second.second;
+                boost::add_vertex (oneVert, gFull);
+                tempi [1] = nodeCount;
+                nodeIndx [oneVert.id] = nodeCount++;
+            } else
+            {
+                tempi [1] = (*nodeIndx.find (*it)).second;
+            }
+            
             lons.push_back ((*umapitr).second.first);
             lats.push_back ((*umapitr).second.second);
-            assert (nodeNames.find (*it) != nodeNames.end ());
-            tempi [1] = (*nodeNames.find (*it)).second;
-
-            if (terminalNodes.find (*it) == terminalNodes.end () &&
-                    nodeList.find (*it) == nodeList.end ())
-            {
-                if (nodeList.find (*it) == nodeList.end ())
-                    nodeList.insert (*it);
-                else
-                    terminalNodes.insert (*it);
-            }
 
             assert (lons.size () == lats.size ()); // can't ever fail
-            if (lons.size () == 2) // then add edge
-            {
-                oneEdge.dist = calcDist (lons, lats);
-                boost::add_edge (tempi [0], tempi [1], oneEdge, gFull);
-                tempi [0] = tempi [1];
-                lons.erase (lons.begin ());
-                lats.erase (lats.begin ());
-            }
+            oneEdge.dist = calcDist (lons, lats);
+            boost::add_edge (tempi [0], tempi [1], oneEdge, gFull);
+            tempi [0] = tempi [1];
+            lons.erase (lons.begin ());
+            lats.erase (lats.begin ());
         }
     }
-
-    tempi [0] = terminalNodes.size () + nodeList.size ();
-    std::cout << "There are " << terminalNodes.size () <<
-        " terminal nodes and " << nodeList.size () << " non-terminal" << 
-        "; total = " << tempi [0] << std::endl;
-    // This total should be less than the number of vertices in gFull because
-    // it only includes nodes which actually arise within ways, while gFull is
-    // created from all nodes returned from the overpass query regardless of
-    // whether they are part of ways or not.
 
     std::vector <int> compvec (num_vertices (gFull));
     tempi [0] = boost::connected_components (gFull, &compvec [0]);
     std::cout << "Graph has " << num_vertices (gFull) << " vertices and " <<
         tempi [0] << " connected components" << std::endl;
-
-    nodeList.clear ();
 } // end function Graph::makeFullGraph
 
 
-/************************************************************************
- ************************************************************************
- **                                                                    **
- **                     FUNCTION::MAKECOMPACTGRAPH                     **
- **                                                                    **
- ************************************************************************
- ************************************************************************/
-
-void Graph::makeCompactGraph ()
-{
-    int tempi [2];
-    float dist;
-    std::vector <float> lons, lats;
-    long long ni;
-    bundled_vertex_type oneVert;
-    bundled_edge_type oneEdge;
-    umapPair_Itr umapitr;
-
-    // Vertices first
-    for (boost::unordered_set <long long>::iterator it = terminalNodes.begin ();
-            it != terminalNodes.end (); ++it)
-    {
-        assert ((umapitr = nodes.find (*it)) != nodes.end ());
-        oneVert.id = (*umapitr).first;
-        oneVert.lon = ((*umapitr).second).first;
-        oneVert.lat = ((*umapitr).second).second;
-        boost::add_vertex (oneVert, gCompact);
-    }
-
-    std::cout << "Compact Graph has " << num_vertices (gCompact) << 
-        " vertices" << std::endl;
-
-    // Then edges
-    // from http://theboostcpplibraries.com/boost.graph-vertices-and-edges,
-    // but the remainder doesn't work
-    typedef boost::graph_traits <Graph_t>::vertex_iterator viter;
-    Graph_t::out_edge_iterator eit, eend;
-    for (std::pair <viter, viter> vp = vertices (gFull);
-            vp.first != vp.second; ++vp.first)
-    {
-        std::tie (eit, eend) = boost::out_edges (*vp.first, gFull);
-    }
-
-    // from
-    // https://valelab.ucsf.edu/svn/3rdpartypublic/boost/libs/graph/test/grid_graph_test.cpp
-    typedef boost::graph_traits <Graph_t>::vertices_size_type vertices_size_type;
-    typedef boost::graph_traits <Graph_t>::vertex_descriptor vertex_descriptor;
-    typedef boost::graph_traits <Graph_t>::edges_size_type edges_size_type;
-    typedef boost::graph_traits <Graph_t>::edge_descriptor edge_descriptor;
-    const int nc = 7;
-    int nedges, counts [nc] = {0, 0, 0, 0, 0, 0};
-    BOOST_FOREACH (vertex_descriptor current_vertex, vertices (gFull))
-    {
-        edges_size_type out_edges_count = 0; 
-        edges_size_type in_edges_count = 0;
-        std::cout << "[O]";
-        BOOST_FOREACH (edge_descriptor out_edge, 
-                boost::out_edges (current_vertex, gFull))
-        {
-            out_edges_count++;
-            std::cout << get (boost::vertex_index, gFull, 
-                    source (out_edge, gFull)) << "-";
-        }
-        std::cout << "---[I]";
-        BOOST_FOREACH (edge_descriptor in_edge, 
-                boost::in_edges (current_vertex, gFull))
-        {
-            std::cout << get (boost::vertex_index, gFull, 
-                    source (in_edge, gFull)) << "-";
-        }
-        std::cout << std::endl;
-        // These include double counts:
-        out_edges_count = boost::out_degree (current_vertex, gFull);
-        in_edges_count = boost::in_degree (current_vertex, gFull);
-        nedges = (int) out_edges_count + (int) in_edges_count;
-        if (nedges < nc)
-            counts [nedges]++;
-    }
-    std::cout << "#vertices with (";
-    for (int i=0; i<(nc - 1); i++) 
-        std::cout << i << ", ";
-    std::cout << nc - 1 << ") edges = (";
-    for (int i=0; i<(nc - 1); i++)
-        std::cout << counts [i] << ", ";
-    std::cout << counts [nc - 1] << ")" << std::endl;
-
-    // TODO: Why are there vertices with multiple versions of same out-edges?
-
-} // end function Graph::makeCompactGraph
 
 /************************************************************************
  ************************************************************************
