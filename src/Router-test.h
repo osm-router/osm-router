@@ -58,26 +58,20 @@
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/property_map/property_map.hpp>
 
+const float FLOAT_MAX = std::numeric_limits <float>::max ();
+
+struct Bbox
+{
+    float lonmin, latmin, lonmax, latmax;
+};
+
+Bbox get_bbox (float xfrom, float yfrom, float xto, float yto, float expand=0.1);
+
 struct RoutingPoint
 {
     float lon, lat;
     long long node;
     int nodeIndex;
-};
-
-// edge and vertex bundles for the boost::graph
-struct bundled_edge_type
-{ 
-    Weight weight; // weighted distance
-    float dist;
-};
-
-struct bundled_vertex_type
-{
-    long long id;
-    std::string name;
-    float lat, lon;
-    int component;
 };
 
 
@@ -89,17 +83,17 @@ class Router: public Graph
     using Vertex = boost::graph_traits<Graph_t>::vertex_descriptor;
 
     private:
-        std::string profileName;
+        bool _compactGraph;
     protected:
-        float latmin, lonmin, latmax, lonmax;
-        std::vector <ProfilePair> profile;
-
     public:
+        std::vector <float> dists;
         std::vector <RoutingPoint> RoutingPointsList;
 
     Router (std::string xml_file, std::string profile_file,
-            float lonmin, float latmin, float lonmax, float latmax)
-        : Graph (xml_file, profile_file, lonmin, latmin, lonmax, latmax)
+            float lonmin, float latmin, float lonmax, float latmax,
+            bool compact)
+        : _compactGraph (compact),
+            Graph (xml_file, profile_file, lonmin, latmin, lonmax, latmax)
     {
         /*
         err = getBBox ();
@@ -130,6 +124,7 @@ class Router: public Graph
     {
     }
 
-    int dijkstra (long long fromNode);
     long long nearestNode (float lon0, float lat0);
+    int readRoutingPoints ();
+    int dijkstra (long long fromNode);
 };

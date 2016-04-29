@@ -44,8 +44,10 @@
  ************************************************************************/
 
 int main(int argc, char *argv[]) {
-    std::string city;
-    float stdDev;
+    bool compact;
+    float xfrom, yfrom, xto, yto;
+    Bbox bbox;
+    std::string xml_file, profile_file;
 
     try {
         boost::program_options::options_description generic("Generic options");
@@ -56,10 +58,23 @@ int main(int argc, char *argv[]) {
 
         boost::program_options::options_description config("Configuration");
         config.add_options()
-            ("city,c", boost::program_options::value <std::string> 
-                (&city)->default_value ("london"), "city")
-            ("stdDev,s", boost::program_options::value <float>
-                (&stdDev)->default_value (0), "standard deviation of edge weights")
+            ("graph compact, g", boost::program_options::value <bool>
+                (&compact)->default_value (true),
+                "use compact graph")
+            ("xml_file,f", boost::program_options::value <std::string> 
+                (&xml_file)->default_value ("xmldat.xml"), 
+                "xml_file name (.xml will be appended)")
+            ("profile_file,p", boost::program_options::value <std::string> 
+                (&profile_file)->default_value ("../profile.cfg"), 
+                "profile file name")
+            ("xfrom,a", boost::program_options::value <float> 
+                (&xfrom)->default_value (-0.12), "xfrom")
+            ("yfrom,b", boost::program_options::value <float> 
+                (&yfrom)->default_value (51.515), "yfrom")
+            ("xto,c", boost::program_options::value <float> 
+                (&xto)->default_value (-0.115), "xto")
+            ("yto,d", boost::program_options::value <float> 
+                (&yto)->default_value (51.52), "yto")
             ;
 
         boost::program_options::options_description cmdline_options;
@@ -91,13 +106,10 @@ int main(int argc, char *argv[]) {
         return 1;
     }    
 
-    std::transform (city.begin(), city.end(), city.begin(), ::tolower);
-    if (city.substr (0, 2) == "lo")
-        city = "london";
-    else if (city.substr (0, 2) == "ny")
-        city = "nyc";
+    bbox = get_bbox (xfrom, yfrom, xto, yto);
 
-    Router router (xml_file, profile_file, lonmin, latmin, lonmax, latmax); 
+    Router router (xml_file, profile_file, 
+            bbox.lonmin, bbox.latmin, bbox.lonmax, bbox.latmax, compact); 
 };
 
 
@@ -109,57 +121,41 @@ int main(int argc, char *argv[]) {
  ************************************************************************
  ************************************************************************/
 
-int Ways::getBBox ()
+Bbox get_bbox (float xfrom, float yfrom, float xto, float yto, float expand)
 {
-    const float buffer = 0.01;
-    float lat, lon;
-    int nskips, ipos = 0;
+    // expand is in both directions, so actually twice that value
+    float xmin, ymin, xmax, ymax, xrange, yrange;
+    Bbox bbox;
 
-    lonmin = latmin = FLOAT_MAX;
-    lonmax = latmax = -FLOAT_MAX;
-
-    std::string linetxt, txt, fname;
-    fname = "../data/routing_points_" + getCity () + ".txt";
-    std::ifstream in_file;
-    
-    in_file.open (fname.c_str (), std::ifstream::in);
-    assert (!in_file.fail ());
-
-    in_file.clear ();
-    in_file.seekg (0); 
-    getline (in_file, linetxt, '\n'); // header
-
-    while (getline (in_file, linetxt, '\n'))
+    if (xfrom < xto)
     {
-        ipos = linetxt.find (",");
-        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
-        ipos = linetxt.find (",");
+        xmin = xfrom;
+        xmax = xto;
+    } else
+    {
+        xmin = xto;
+        xmax = xfrom;
+    }
+    if (yfrom < yto)
+    {
+        ymin = yfrom;
+        ymax = yto;
+    } else
+    {
+        ymin = yto;
+        ymax = yfrom;
+    }
 
-        lat = atof (linetxt.substr (0, ipos).c_str());
-        if (lat < latmin)
-            latmin = lat;
-        else if (lat > latmax)
-            latmax = lat;
+    xrange = xmax - xmin;
+    yrange = ymax - ymin;
 
-        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
-        ipos = linetxt.find (",");
-        lon = atof (linetxt.substr (0, ipos).c_str());
-        if (lon < lonmin)
-            lonmin = lon;
-        else if (lon > lonmax)
-            lonmax = lon;
-    } // end while getline
-    in_file.close ();
+    bbox.lonmin = xmin - xrange * expand;
+    bbox.lonmax = xmax + xrange * expand;
+    bbox.latmin = ymin - yrange * expand;
+    bbox.latmax = ymax + yrange * expand;
 
-    lonmin -= buffer;
-    latmin -= buffer;
-    lonmax += buffer;
-    latmax += buffer;
-
-    return 0;
-}; // end function getBBox
-
-
+    return bbox;
+}
 
 /************************************************************************
  ************************************************************************
@@ -170,13 +166,10 @@ int Ways::getBBox ()
  ************************************************************************/
 
 
-int Ways::readRoutingPoints ()
+int Router::readRoutingPoints ()
 {
     int station_id, ipos = 0;
     std::string linetxt, txt, fname, stationNodeFileName;
-
-    stationNodeFileName = "routing_point_nodes_" + getCity () + ".txt";
-    fname = "../data/routing_points_" + getCity () + ".txt";
 
     /*
      * If the routing points are matched to the OSM nodes the first time, 
@@ -217,8 +210,6 @@ int Ways::readRoutingPoints ()
             rpoint.nodeIndex = atof (linetxt.substr (0, ipos).c_str());
             RoutingPointsList.push_back (rpoint);
 
-            if (terminalNodes.find (rpoint.node) == terminalNodes.end())
-                terminalNodes.insert (rpoint.node);
         }
         stationNodeFile.close ();
 
@@ -275,15 +266,12 @@ int Ways::readRoutingPoints ()
             ipos = linetxt.find (",");
             rpoint.lon = atof (linetxt.substr (0, ipos).c_str());
             rpoint.node = nearestNode (rpoint.lon, rpoint.lat);
-            assert (nodeNames.find (rpoint.node) != nodeNames.end());
-            rpoint.nodeIndex = nodeNames.find (rpoint.node)->second;
+            //assert (nodeNames.find (rpoint.node) != nodeNames.end());
+            //rpoint.nodeIndex = nodeNames.find (rpoint.node)->second;
             RoutingPointsList.push_back (rpoint);
 
             stationNodeFile << station_id << ", " << rpoint.node << ", " << rpoint.nodeIndex << '\n';
 
-            // Also add rpoint nodes to terminalNodes
-            if (terminalNodes.find (rpoint.node) == terminalNodes.end())
-                terminalNodes.insert (rpoint.node);
         } // end while getline
         stationNodeFile.close ();
         in_file.close ();
@@ -303,7 +291,7 @@ int Ways::readRoutingPoints ()
  ************************************************************************/
 
 
-long long Ways::nearestNode (float lon0, float lat0)
+long long Router::nearestNode (float lon0, float lat0)
 {
     int id;
     long long node = -INT_MAX;
@@ -432,10 +420,6 @@ int Router::dijkstra (long long fromNode)
         if (RoutingPointsList [i].nodeIndex == fromNode)
             id.push_back (i);
     assert (id.size () > 0);
-
-    for (int i=0; i<RoutingPointsList.size (); i++)
-        for (std::vector <int>::iterator itr=id.begin(); itr != id.end(); itr++)
-            distMat (*itr, i) = dists [i];
 
     return 0;
 }

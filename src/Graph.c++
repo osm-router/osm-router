@@ -45,6 +45,7 @@
 
 int main(int argc, char *argv[]) 
 {
+    bool compact;
     float lonmin, latmin, lonmax, latmax;
     std::string xml_file, profile_file;
 
@@ -57,6 +58,9 @@ int main(int argc, char *argv[])
 
         boost::program_options::options_description config("Configuration");
         config.add_options()
+            ("graph compact,g", boost::program_options::value <bool>
+                (&compact)->default_value (true),
+                "use compact graph")
             ("xml_file,f", boost::program_options::value <std::string> 
                 (&xml_file)->default_value ("xmldat.xml"), 
                 "xml_file name (.xml will be appended)")
@@ -106,5 +110,6 @@ int main(int argc, char *argv[])
     if ((int) xml_file.find (".") < 0)
         xml_file = xml_file + ".xml";
 
-    Graph graph (xml_file, profile_file, lonmin, latmin, lonmax, latmax); 
+    Graph graph (compact, xml_file, profile_file, 
+            lonmin, latmin, lonmax, latmax); 
 };

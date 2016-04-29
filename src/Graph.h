@@ -96,21 +96,21 @@ class Graph: public Xml
     using Vertex = boost::graph_traits<Graph_t>::vertex_descriptor;
 
     private:
-        bool obey_oneway;
+        bool _compact_graph, obey_oneway;
         std::string _profile_file;
-        Graph_t gFull, gCompact;
 
     protected:
         std::vector <ProfilePair> profile;
+        Graph_t gFull, gCompact;
 
     public:
         umapInt nodeIndxFull, nodeIndxCompact;
         umapPair_Itr node_itr;
 
 
-    Graph (std::string xml_file, std::string profile_file,
+    Graph (bool compact, std::string xml_file, std::string profile_file,
             float lonmin, float latmin, float lonmax, float latmax)
-        : _profile_file (profile_file),
+        : _compact_graph (compact), _profile_file (profile_file),
             Xml (xml_file, lonmin, latmin, lonmax, latmax)
     {
         // Construction fills vectors of "ways" and "nodes" from Xml class
@@ -125,8 +125,10 @@ class Graph: public Xml
 
         nodeIndxFull.clear ();
         nodeIndxCompact.clear ();
-        makeFullGraph ();
-        makeCompactGraph ();
+        if (_compact_graph)
+            makeCompactGraph ();
+        else
+            makeFullGraph ();
         //dumpWays ();
     }
     ~Graph ()
@@ -138,6 +140,7 @@ class Graph: public Xml
     }
 
     std::string getProfileFile () { return _profile_file;   }
+    bool getIsCompact () { return _compact_graph;   }
 
     void dumpWays ();
     void dumpGraph (Graph_t* g);
