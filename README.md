@@ -1,8 +1,14 @@
 # osm-router [![Build Status](https://travis-ci.org/osm-router/osm-router.svg?branch=master)](https://travis-ci.org/osm-router/osm-router)
 
-A very fast many-to-many OpenStreetMap router based on C++ boost::graph.  Designed to work in a designated area, and so reads data from a
-planet.osm file. Hard-coded at present to read data for greater London and greater NYC, and to route between points given in
-./data/routing-points-(city).txt. The directory of holding the OSM data is also hard-coded at present (line#146 in Router.h).
+Probabilistic OpenStreetMap router based on C++ boost::graph. Uses the following hierarchically related header files:
+
+1. 'xml-parser' Returns a query from the [overpass API](http://overpass-api.de) in OSM XML format, dumps to a specified file, and extracts all
+   ways and associated nodes from file (stored in class `Xml`). Alternatively, file name may be entered to avoid repeated downloads, in which
+   case 'xml-parser' merely extracts ways and nodes.
+2. 'Graph' Derived from class `Xml`. Stores the ways and nodes from 'xml-parser' as a `boost::graph`. Can store either a full graph
+   representing all data, or the 'compressed' graph containing only junction nodes.
+3. 'Router-test' Derived from class `Graph`. Performs routing query from a given origin point and returns distances to all destination points
+   within the graph (values <1 for non-reachable nodes).
 
 ### build:
 1. cd ./build  
