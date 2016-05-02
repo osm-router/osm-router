@@ -100,6 +100,7 @@ class Graph: public Xml
         std::string _profile_file;
 
     protected:
+        int graph_size; // size of largest connected component, not entire graph.
         std::vector <ProfilePair> profile;
         Graph_t gr;
 
@@ -129,6 +130,7 @@ class Graph: public Xml
         else
             makeFullGraph ();
         //dumpWays ();
+        graph_size = getConnected (&gr);
     }
     ~Graph ()
     {
@@ -369,7 +371,7 @@ void Graph::makeFullGraph ()
     } // end for Ways_itr over ways
 
     std::cout << "Full graph has " << num_vertices (gr) << " vertices and " <<
-        getConnected (&gr) << " connected components" << std::endl;
+        getConnected (&gr) << " in largest connected component" << std::endl;
 } // end function Graph::makeFullGraph
 
 
@@ -524,7 +526,7 @@ void Graph::makeCompactGraph ()
 
     std::cout << "Compact graph has " << num_vertices (gr) << 
         " vertices and " << getConnected (&gr) << 
-        " connected components" << std::endl;
+        " in largest connected component" << std::endl;
 } // end function Graph::makeCompactGraph
 
 
@@ -574,8 +576,16 @@ float Graph::calcDist (std::vector <float> x, std::vector <float> y)
 
 int Graph::getConnected (Graph_t *g)
 {
+    /* Labels each vertex with the connected component to which it belongs. This
+     * is subsequently used in mapping nearest nodes to routing points
+     * (currently in Router::nearest_node), for which only nodes that are part
+     * of the largest connectected component are used. NOTE that boost *seems*
+     * to number this largest component "0", and that is assumed throughout ...
+     * Returns size of largest component
+     */
+
     std::vector <int> compvec (num_vertices (*g));
-    int num = boost::connected_components (*g, &compvec[0]);
+    int num = boost::connected_components (*g, &compvec[0]); // num. of comps.
 
     // Then store component info in vertices
     /*
@@ -589,8 +599,13 @@ int Graph::getConnected (Graph_t *g)
     boost::property_map< Graph_t, int bundled_vertex_type::* >::type 
         vertex_component = boost::get (&bundled_vertex_type::component, (*g));
     auto vs = boost::vertices (*g);
+    num = 0;
     for (auto vit = vs.first; vit != vs.second; ++vit)
+    {
+        if (compvec [*vit] == 0)
+            num++;
         vertex_component [*vit] = compvec [*vit];
+    }
 
     // Optional filtering of component = 0:
     /*

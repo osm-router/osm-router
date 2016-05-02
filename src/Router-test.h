@@ -67,14 +67,6 @@ struct Bbox
 
 Bbox get_bbox (float xfrom, float yfrom, float xto, float yto, float expand=0.1);
 
-struct RoutingPoint
-{
-    float lon, lat;
-    long long node;
-    int nodeIndex;
-};
-
-
 class Router: public Graph
 {
     using Graph_t = boost::adjacency_list< boost::vecS, boost::vecS, 
@@ -89,8 +81,7 @@ class Router: public Graph
     public:
         int err;
         int from_node, to_node;
-        std::vector <float> dists;
-        std::vector <RoutingPoint> RoutingPointsList;
+        std::vector <std::pair <int, float>> dists; // returned from dijkstra
 
     Router (std::string xml_file, std::string profile_file,
             float xfrom, float yfrom, float xto, float yto,
@@ -104,32 +95,8 @@ class Router: public Graph
         // index of each ID into the graph.
         from_node = nodeIndx [nearestNode (_xfrom, _yfrom)];
         to_node = nodeIndx [nearestNode (_xto, _yto)];
-        std::cout << "(from, to) node = (" << from_node << ", " <<
-            to_node << ")" << std::endl;
-        std::cout << "**" << nodeIndx.size () << "**" << std::endl;
         err = dijkstra (from_node);
-        /*
-        err = getBBox ();
-        err = readRoutingPoints ();
-
-        std::cout << "Getting distances between routing points";
-        std::cout.flush ();
-        count = 0;
-        for (std::vector<RoutingPoint>::iterator itr=RoutingPointsList.begin();
-                itr != RoutingPointsList.end(); itr++)
-        {
-            err = dijkstra (itr->nodeIndex);
-            assert (dists.size () == RoutingPointsList.size ());
-            std::cout << "\rGetting distances between routing points " <<
-                count << "/" << RoutingPointsList.size () << " ";
-            std::cout.flush ();
-            count++;
-        }
-        std::cout << "\rGetting distances between routing points " <<
-            RoutingPointsList.size () << "/" << RoutingPointsList.size
-            () << std::endl;
-        std::cout << "done." << std::endl;
-        */
+        // err = get_dists (); // demo only
     }
     ~Router ()
     {
@@ -137,12 +104,13 @@ class Router: public Graph
 
     long long nearestNode (float lon0, float lat0);
     int dijkstra (int fromNode);
+    int get_dists ();
 };
 
 /************************************************************************
  ************************************************************************
  **                                                                    **
- **                            NEARESTNODE                             **
+ **                         ROUTER::NEARESTNODE                        **
  **                                                                    **
  ************************************************************************
  ************************************************************************/
@@ -176,6 +144,7 @@ long long Router::nearestNode (float lon0, float lat0)
     auto vs = boost::vertices (gr);
     for (auto vit = vs.first; vit != vs.second; ++vit)
     {
+        // See Graph::get_connected for why next line == 0
         if (vertex_component [*vit] == 0)
         {
             lat = vertex_lat [*vit];
@@ -206,7 +175,7 @@ long long Router::nearestNode (float lon0, float lat0)
 /************************************************************************
  ************************************************************************
  **                                                                    **
- **                              DIJKSTRA                              **
+ **                          ROUTER::DIJKSTRA                          **
  **                                                                    **
  ************************************************************************
  ************************************************************************/
@@ -230,61 +199,69 @@ int Router::dijkstra (int fromNode)
     auto w_map = boost::get(&bundled_edge_type::weight, gr); 
 
     int start = vertex (fromNode, gr);
-    std::cout << "Starting dijkstra .. ";
-    std::cout.flush ();
     boost::dijkstra_shortest_paths (gr, start,
             weight_map (w_map). 
             predecessor_map (p_map).
             distance_map (d_map));
-    std::cout << " done." << std::endl;
 
     // Check that all routing points have been reached
     int nvalid = 0;
-    std::cout << "dijkstra gave " << RoutingPointsList.size () <<
-        " routing points" << std::endl;
-    std::cout << "checking route through graph ... ";
-    std::cout.flush ();
-    for (std::vector <RoutingPoint>::iterator itr = RoutingPointsList.begin();
-            itr != RoutingPointsList.end (); itr++)
-        if (distances [(*itr).nodeIndex] < FLOAT_MAX)
+    for (std::vector <Weight>::iterator itr = distances.begin();
+            itr != distances.end (); itr++)
+        if ((*itr) < FLOAT_MAX)
             nvalid++;
-    std::cout << "done." << std::endl;
-    std::cout << "nvalid = " << nvalid << " / " << RoutingPointsList.size ();
-    assert (nvalid == RoutingPointsList.size ());
+    assert (nvalid == graph_size);
 
     // Trace back from each routing point 
-    Vertex v0, v;
+    Vertex v;
     dists.resize (0);
     float dist;
+    boost::property_map < Graph_t, int bundled_vertex_type::* >::type
+        vertex_component = boost::get (&bundled_vertex_type::component, gr);
 
-    for (std::vector <RoutingPoint>::iterator itr = RoutingPointsList.begin();
-            itr != RoutingPointsList.end (); itr++)
+    auto vs = boost::vertices (gr);
+    for (auto vit = vs.first; vit != vs.second; ++vit)
     {
-        v0 = itr->nodeIndex;
-        v = v0;
-        dist = 0.0;
-        for (Vertex u = p_map[v]; u != v; v = u, u = p_map[v]) 
+        if (vertex_component [*vit] == 0)
         {
-            std::pair<Graph_t::edge_descriptor, bool> edgePair = 
-                boost::edge(u, v, gr);
-            Graph_t::edge_descriptor edge = edgePair.first;
-            dist += boost::get (&bundled_edge_type::dist, gr, edge);
+            v = (*vit);
+            dist = 0.0;
+            for (Vertex u = p_map[v]; u != v; v = u, u = p_map[v]) 
+            {
+                std::pair<Graph_t::edge_descriptor, bool> edgePair = 
+                    boost::edge(u, v, gr);
+                Graph_t::edge_descriptor edge = edgePair.first;
+                dist += boost::get (&bundled_edge_type::dist, gr, edge);
+            }
+            dists.push_back (std::make_pair ((*vit), dist));
         }
-        dists.push_back (dist);
+        else
+            dists.push_back (std::make_pair ((*vit), -1.0));
     }
+    assert (dists.size () == num_vertices (gr));
 
-    assert (dists.size () == RoutingPointsList.size ());
-    /*
-     * First have to match long long fromNode to index# within
-     * RoutingPointsList.  There are cases where two routing points match to
-     * same OSM node, so distmats have to be filled for all such multiples
-     */
-    std::vector <int> id;
-    id.resize (0);
-    for (int i=0; i<RoutingPointsList.size(); i++)
-        if (RoutingPointsList [i].nodeIndex == fromNode)
-            id.push_back (i);
-    assert (id.size () > 0);
+    return 0;
+}
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                          ROUTER::GET_DISTS                         **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int Router::get_dists ()
+{
+    assert (dists.size () > 0); // Asserts that dijkstra has been run.
+
+    auto vs = dists;
+    for (auto it = dists.begin (); it != dists.end (); ++it)
+    {
+        std::cout << "(" << (*it).first << ", " << (*it).second <<
+            ")" << std::endl;
+    }
 
     return 0;
 }
