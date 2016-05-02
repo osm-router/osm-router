@@ -19,12 +19,11 @@
  *  Author:     Mark Padgham / Andreas Petutschnig
  *  E-Mail:     mark.padgham@email.com / andras@petutschnig.de
  *
- *  Description:    C++ implementation of OSM router using boost::graph.
- *                  Designed to work in a designated area, and so reads data
- *                  from a planet.osm file. Hard-coded at present to read data
- *                  for greater London and greater NYC, and to route between
- *                  points given in ./data/routing-points-(city).txt using the
- *                  profile given in profile.cfg
+ *  Description:    Derived from class 'Graph' of 'Graph.h'. Takes the
+ *                  boost::graph from that class and dijkstra-routes all paths
+ *                  from a specified origin. Additional function 'make_pmat'
+ *                  calculates distances along all possible paths to all nodes
+ *                  given an origin-destination pair. 
  *
  *  Limitations:
  *
@@ -82,6 +81,7 @@ class Router: public Graph
         int err;
         int from_node, to_node;
         std::vector <std::pair <int, float>> dists; // returned from dijkstra
+        std::vector <std::pair <int, float>> pvec; // returned from make_pmat
 
     Router (std::string xml_file, std::string profile_file,
             float xfrom, float yfrom, float xto, float yto,
@@ -97,14 +97,17 @@ class Router: public Graph
         to_node = nodeIndx [nearestNode (_xto, _yto)];
         err = dijkstra (from_node);
         // err = get_dists (); // demo only
+        err = make_pvec (from_node, to_node);
     }
     ~Router ()
     {
+        pvec.resize (0);
     }
 
     long long nearestNode (float lon0, float lat0);
     int dijkstra (int fromNode);
     int get_dists ();
+    int make_pvec (int fromNode, int toNode);
 };
 
 /************************************************************************
@@ -261,6 +264,56 @@ int Router::get_dists ()
     {
         std::cout << "(" << (*it).first << ", " << (*it).second <<
             ")" << std::endl;
+    }
+
+    return 0;
+}
+
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                          ROUTER::MAKE_PMAT                         **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int Router::make_pvec (int fromNode, int toNode)
+{
+    /*
+     * One SP produces a vector of distances from an origin to all intermediate
+     * nodes.  Calculating from the destination produces the complementary
+     * vector of distances from each of intermediate nodes to the destination.
+     * Thus the total path length through each point can be calculated by adding
+     * the two.
+     *
+     * The probability of travelling from the origin to each intermediate point
+     * can then be directly obtained from this vector of total path lengths
+     * which pass through those points.
+     */
+    int err = dijkstra (fromNode);
+
+    pvec.resize (num_vertices (gr));
+    for (std::vector <std::pair <int, float>>::iterator it=pvec.begin (); 
+            it != pvec.end (); ++it) 
+        (*it).second = 0.0;
+
+    assert (dists.size () > 0); // Asserts that dijkstra has been run.
+    pvec.resize (0);
+
+    auto vs = dists;
+    for (auto it = dists.begin (); it != dists.end (); ++it)
+        pvec.push_back (std::make_pair ((*it).first, (*it).second));
+
+    // Then repeat for toNode and add result to pvec
+    err = dijkstra (toNode);
+    // TODO: boost::zip this with an iterator
+    assert (dists.size () == pvec.size ());
+    for (int i=0; i<dists.size (); i++)
+    {
+        assert (dists [i].first == pvec [i].first);
+        pvec [i].second += dists [i].second;
     }
 
     return 0;

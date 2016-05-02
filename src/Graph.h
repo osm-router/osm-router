@@ -19,12 +19,9 @@
  *  Author:     Mark Padgham / Andreas Petutschnig
  *  E-Mail:     mark.padgham@email.com / andras@petutschnig.de
  *
- *  Description:    C++ implementation of OSM router using boost::graph.
- *                  Designed to work in a designated area, and so reads data
- *                  from a planet.osm file. Hard-coded at present to read data
- *                  for greater London and greater NYC, and to route between
- *                  points given in ./data/routing-points-(city).txt using the
- *                  profile given in profile.cfg
+ *  Description:    Derived from class 'Xml' of 'xml-parser.h'. Takes OSM ways
+ *                  and nodes from that class and stores them as a boost::graph
+ *                  structures.  all highways and associated nodes. 
  *
  *  Limitations:
  *
@@ -369,9 +366,6 @@ void Graph::makeFullGraph ()
             } // end for ll_Itr over nodes
         } // end if wt > 0.0
     } // end for Ways_itr over ways
-
-    std::cout << "Full graph has " << num_vertices (gr) << " vertices and " <<
-        getConnected (&gr) << " in largest connected component" << std::endl;
 } // end function Graph::makeFullGraph
 
 
@@ -523,10 +517,6 @@ void Graph::makeCompactGraph ()
         } // end if wt > 0.0
     } // end for Ways_itr over ways
     nodeCounts.clear ();
-
-    std::cout << "Compact graph has " << num_vertices (gr) << 
-        " vertices and " << getConnected (&gr) << 
-        " in largest connected component" << std::endl;
 } // end function Graph::makeCompactGraph
 
 

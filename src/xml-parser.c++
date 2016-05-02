@@ -19,7 +19,10 @@
  *  Author:     Mark Padgham 
  *  E-Mail:     mark.padgham@email.com 
  *
- *  Description:    test of boost xml parser
+ *  Description:    Extracts an OSM XML file from the overpass API and extracts
+ *                  all highways and associated nodes. All functionality is
+ *                  contained in the header file; this .c++ file just provides a
+ *                  stand-alone compilable wrapped.
  *
  *  Limitations:
  *

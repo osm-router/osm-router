@@ -19,12 +19,11 @@
  *  Author:     Mark Padgham / Andreas Petutschnig
  *  E-Mail:     mark.padgham@email.com / andras@petutschnig.de
  *
- *  Description:    C++ implementation of OSM router using boost::graph.
- *                  Designed to work in a designated area, and so reads data
- *                  from a planet.osm file. Hard-coded at present to read data
- *                  for greater London and greater NYC, and to route between
- *                  points given in ./data/routing-points-(city).txt using the
- *                  profile given in profile.cfg
+ *  Description:    Derived from class 'Xml' of 'xml-parser.h'. Takes OSM ways
+ *                  and nodes from that class and stores them as a boost::graph
+ *                  structures.  all highways and associated nodes. All
+ *                  functionality is contained in the header file; this .c++
+ *                  file just provides a stand-alone compilable wrapped.
  *
  *  Limitations:
  *

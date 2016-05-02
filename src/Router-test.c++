@@ -19,12 +19,13 @@
  *  Author:     Mark Padgham / Andreas Petutschnig
  *  E-Mail:     mark.padgham@email.com / andras@petutschnig.de
  *
- *  Description:    C++ implementation of OSM router using boost::graph.
- *                  Designed to work in a designated area, and so reads data
- *                  from a planet.osm file. Hard-coded at present to read data
- *                  for greater London and greater NYC, and to route between
- *                  points given in ./data/routing-points-(city).txt using the
- *                  profile given in profile.cfg
+ *  Description:    Derived from class 'Graph' of 'Graph.h'. Takes the
+ *                  boost::graph from that class and dijkstra-routes all paths
+ *                  from a specified origin. Additional function 'make_pmat'
+ *                  calculates distances along all possible paths to all nodes
+ *                  given an origin-destination pair. All functionality is
+ *                  contained in the header file; this .c++ file just provides a
+ *                  stand-along compilable wrapper.
  *
  *  Limitations:
  *
@@ -157,6 +158,3 @@ Bbox get_bbox (float xfrom, float yfrom, float xto, float yto, float expand)
 
     return bbox;
 }
-
-
-

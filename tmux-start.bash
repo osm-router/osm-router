@@ -41,12 +41,13 @@ tmux send-keys -t $SESSION:2 ':' 'tabe tmux-start.bash' C-m
 tmux send-keys -t $SESSION:2 ':' 'tabe CMakeLists.txt' C-m
 tmux send-keys -t $SESSION:2 ':' 'tabe README.md' C-m
 tmux split-window -h
-if [ $option -ne 1 ]
+if [ $option -eq 1 ]
 then
+    tmux select-pane -t 0
+else
     tmux send-keys -t $SESSION:2 'git st' C-m
     tmux send-keys -t $SESSION:2 'cd build/' C-m
 fi
-tmux select-pane -t 0
 
 if [ $option -eq 1 ]
 then
