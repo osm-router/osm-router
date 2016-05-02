@@ -10,6 +10,8 @@ Probabilistic OpenStreetMap router based on C++ boost::graph. Uses the following
 3. 'Router-test' Derived from class `Graph`. Performs routing query from a given origin point and returns distances to all destination points
    within the graph (values <1 for non-reachable nodes).
 
+('.c++' files are included in each case for stand-alone compilation.)
+
 ### build:
 1. cd ./build  
 2. cmake ..  

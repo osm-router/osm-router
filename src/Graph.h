@@ -1,6 +1,6 @@
 /***************************************************************************
  *  Project:    osm-router
- *  File:       Graph-test.h
+ *  File:       Graph.h
  *  Language:   C++
  *
  *  osm-router is free software: you can redistribute it and/or modify it
