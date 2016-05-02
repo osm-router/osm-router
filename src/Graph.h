@@ -104,7 +104,7 @@ class Graph: public Xml
         Graph_t gr;
 
     public:
-        umapInt nodeIndxFull, nodeIndxCompact;
+        umapInt nodeIndx;
         umapPair_Itr node_itr;
 
 
@@ -123,8 +123,7 @@ class Graph: public Xml
             setProfile (_profile_file.c_str (), &profile);
         // setProfile also sets obey_oneway
 
-        nodeIndxFull.clear ();
-        nodeIndxCompact.clear ();
+        nodeIndx.clear ();
         if (_compact_graph)
             makeCompactGraph ();
         else
@@ -133,8 +132,7 @@ class Graph: public Xml
     }
     ~Graph ()
     {
-        nodeIndxFull.clear ();
-        nodeIndxCompact.clear ();
+        nodeIndx.clear ();
         gr.clear ();
     }
 
@@ -291,7 +289,7 @@ void Graph::makeFullGraph ()
     //boost::graph_traits <Graph_t>::out_edge_iterator ei, ei_end;
 
     // Vertices are added as new ones appear in ways. boost::graph numbers all
-    // vertices with sequential integers indexed here in nodeIndxFull. The tempi
+    // vertices with sequential integers indexed here in nodeIndx. The tempi
     // values hold the indices for add the edges.
     for (Ways_Itr wi = ways.begin(); wi != ways.end(); ++wi)
     {
@@ -307,17 +305,17 @@ void Graph::makeFullGraph ()
             ni = (*wi).nodes.front ();
             assert ((umapitr = nodes.find (ni)) != nodes.end ());
             // Add to nodes if not already there
-            if (nodeIndxFull.find (ni) == nodeIndxFull.end())
+            if (nodeIndx.find (ni) == nodeIndx.end())
             {
                 oneVert.id = (*umapitr).first;
                 oneVert.lon = (*umapitr).second.first;
                 oneVert.lat = (*umapitr).second.second;
                 boost::add_vertex (oneVert, gr);
                 tempi [0] = nodeCount;
-                nodeIndxFull [oneVert.id] = nodeCount++;
+                nodeIndx [oneVert.id] = nodeCount++;
             } else
             {
-                tempi [0] = (*nodeIndxFull.find (ni)).second; // int index of ni
+                tempi [0] = (*nodeIndx.find (ni)).second; // int index of ni
             }
 
             lats.resize (0);
@@ -331,17 +329,17 @@ void Graph::makeFullGraph ()
             {
                 assert ((umapitr = nodes.find (*it)) != nodes.end ());
                 // Add to nodes if not already there
-                if (nodeIndxFull.find (*it) == nodeIndxFull.end ())
+                if (nodeIndx.find (*it) == nodeIndx.end ())
                 {
                     oneVert.id = (*umapitr).first;
                     oneVert.lon = (*umapitr).second.first;
                     oneVert.lat = (*umapitr).second.second;
                     boost::add_vertex (oneVert, gr);
                     tempi [1] = nodeCount;
-                    nodeIndxFull [oneVert.id] = nodeCount++;
+                    nodeIndx [oneVert.id] = nodeCount++;
                 } else
                 {
-                    tempi [1] = (*nodeIndxFull.find (*it)).second;
+                    tempi [1] = (*nodeIndx.find (*it)).second;
                 }
                 
                 lons.push_back ((*umapitr).second.first);
@@ -447,7 +445,7 @@ void Graph::makeCompactGraph ()
     }
 
     // Vertices are added as new ones appear in ways. boost::graph numbers all
-    // vertices with sequential integers indexed here in nodeIndxCompact. The
+    // vertices with sequential integers indexed here in nodeIndx. The
     // tempi values hold the indices for add the edges.
     for (Ways_Itr wi = ways.begin(); wi != ways.end(); ++wi)
     {
@@ -463,17 +461,17 @@ void Graph::makeCompactGraph ()
             ni = (*wi).nodes.front ();
             assert ((umapitr = nodes.find (ni)) != nodes.end ());
             // Add to nodes if not already there (and first nodes are always added)
-            if (nodeIndxCompact.find (ni) == nodeIndxCompact.end())
+            if (nodeIndx.find (ni) == nodeIndx.end())
             {
                 oneVert.id = (*umapitr).first;
                 oneVert.lon = (*umapitr).second.first;
                 oneVert.lat = (*umapitr).second.second;
                 boost::add_vertex (oneVert, gr);
                 tempi [0] = nodeCount;
-                nodeIndxCompact [oneVert.id] = nodeCount++;
+                nodeIndx [oneVert.id] = nodeCount++;
             } else
             {
-                tempi [0] = (*nodeIndxCompact.find (ni)).second; // int index of ni
+                tempi [0] = (*nodeIndx.find (ni)).second; // int index of ni
             }
 
             lats.resize (0);
@@ -497,17 +495,17 @@ void Graph::makeCompactGraph ()
                 if (nodeCounts [*it] > 1)
                 {
                     // Add to nodes if not already there *AND* nodeCounts > 1
-                    if (nodeIndxCompact.find (*it) == nodeIndxCompact.end ())
+                    if (nodeIndx.find (*it) == nodeIndx.end ())
                     {
                         oneVert.id = (*umapitr).first;
                         oneVert.lon = (*umapitr).second.first;
                         oneVert.lat = (*umapitr).second.second;
                         boost::add_vertex (oneVert, gr);
                         tempi [1] = nodeCount;
-                        nodeIndxCompact [oneVert.id] = nodeCount++;
+                        nodeIndx [oneVert.id] = nodeCount++;
                     } else
                     {
-                        tempi [1] = (*nodeIndxCompact.find (*it)).second;
+                        tempi [1] = (*nodeIndx.find (*it)).second;
                     }
                     add_edge (tempi [0], tempi [1], &gr, &oneEdge, (*wi).type);
                     if (!(*wi).oneway || !obey_oneway)
