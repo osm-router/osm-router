@@ -30,9 +30,6 @@
  ***************************************************************************/
 
 
-#ifndef XML_H
-#define XML_H
-
 #include <curl/curl.h>
 
 #include <iostream>
@@ -44,6 +41,9 @@
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/unordered_map.hpp>
+
+#ifndef XML_H
+#define XML_H
 
 typedef std::pair <float, float> ffPair; // lat-lon
 

@@ -92,7 +92,9 @@ class Router: public Graph
         std::vector <std::pair <int, float>> dists; // returned from dijkstra
         std::vector <std::pair <int, float>> pvec; // returned from make_pmat
         boost::numeric::ublas::matrix <float> cost_mat;
-        Eigen::MatrixXf wmat; // Eigen matrix so that eigenvals can be calculated
+        //Eigen::MatrixXf wmat; // Eigen matrix so that eigenvals can be calculated
+        boost::numeric::ublas::matrix <float> wmat;
+        std::vector <float> zn;
 
     Router (std::string xml_file, std::string profile_file,
             float xfrom, float yfrom, float xto, float yto,
@@ -102,18 +104,19 @@ class Router: public Graph
             Graph (compact, xml_file, profile_file, 
                 lonmin, latmin, lonmax, latmax), _theta (theta)
     {
-        //std::cout << "compact network has " << num_vertices (gr) << 
-        //    " nodes and " << ways.size () << " ways" << std::endl;
         from_node = nodeIndx [nearestNode (_xfrom, _yfrom)];
         to_node = nodeIndx [nearestNode (_xto, _yto)];
         tempf = make_cost_mat (from_node, to_node);
         std::cout << "cost mat has " << tempf << " finite entries" << std::endl;
+        tempf = calc_zn ();
+        std::cout << "convergence = " << tempf << std::endl;
     }
     ~Router ()
     {
         node_order.resize (0);
         pvec.resize (0);
         cost_mat.resize (0, 0);
+        zn.resize (0);
     }
 
     long long nearestNode (float lon0, float lat0);
@@ -121,6 +124,7 @@ class Router: public Graph
     int get_dists ();
     int make_pvec (int fromNode, int toNode);
     float make_cost_mat (int fromNode, int toNode);
+    float calc_zn ();
 };
 
 /************************************************************************
@@ -367,7 +371,7 @@ float Router::make_cost_mat (int fromNode, int toNode)
 
     //cost_mat.resize (nv, nv);
     cost_mat = boost::numeric::ublas::scalar_matrix <float> (nv, nv, FLOAT_MAX);
-    //wmat = boost::numeric::ublas::scalar_matrix <float> (nv, nv, 0.0);
+    wmat = boost::numeric::ublas::scalar_matrix <float> (nv, nv, 0.0);
 
     /*
     // iterator over matrix:
@@ -389,10 +393,12 @@ float Router::make_cost_mat (int fromNode, int toNode)
         vertex_component = boost::get(&bundled_vertex_type::component, gr);
     boost::graph_traits <Graph_t>::out_edge_iterator ei, ei_end;
 
+    /* only for Eigen::MatrixXf type
     wmat.resize (nv, nv);
     for (int i=0; i<nv; i++)
         for (int j=0; j<nv; j++)
             wmat (i, j) = 0.0;
+    */
 
     count = 0;
     auto vs = boost::vertices (gr);
@@ -418,6 +424,7 @@ float Router::make_cost_mat (int fromNode, int toNode)
     }
 
     // Check spectral radius of w
+    /*
     Eigen::EigenSolver <Eigen::MatrixXf> es2 (wmat);
     float rho = 0.0, eabs;
     auto evs = es2.eigenvalues ();
@@ -430,6 +437,7 @@ float Router::make_cost_mat (int fromNode, int toNode)
     if (rho >= 1.0)
         std::cout << "Spectral radius = " << rho << std::endl;
     assert (rho < 1.0);
+    */
 
     // Equivalent, according to Saerens et al (although numerical comparisons
     // suggest otherwise):
@@ -445,4 +453,54 @@ float Router::make_cost_mat (int fromNode, int toNode)
     assert (rsum_max < 1.0);
 
     return (float) count / ((float) nv * (float) nv);
+}
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                           ROUTER::CALC_ZN                          **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+float Router::calc_zn ()
+{
+    const int max_loops = 1e6;
+    const float tol = 1.0e-6;
+    int nloops = 0;
+    float diff = FLOAT_MAX;
+
+    const int nv = num_vertices (gr);
+    std::vector <float> en, zn_old;
+
+    for (int i=0; i<(nv - 1); i++)
+        en.push_back (0.0);
+    en.push_back (1.0);
+
+    for (int i=0; i<nv; i++)
+        zn_old.push_back (1.0 / (float) nv);
+
+    zn.resize (nv);
+
+    while (diff > tol)
+    {
+        diff = 0.0;
+        for (int j=0; j<nv; j++)
+        {
+            zn [j] = 0.0;
+            for (int k=0; k<nv; k++)
+            {
+                zn [j] += wmat (k, j) * zn_old [j] + en [j];
+            }
+            diff += std::abs (zn [j] - zn_old [j]);
+        }
+        for (int j=0; j<nv; j++)
+            zn_old [j] = zn [j];
+        nloops++;
+        if (nloops > max_loops)
+            break;
+    }
+
+    return diff;
 }

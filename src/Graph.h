@@ -389,10 +389,9 @@ void Graph::add_edge (int v1, int v2, Graph_t* g,
     {
         edge_t e = *boost::out_edges (v1, *g).first;
         if ((*g)[e].type != new_highway_type)
-            std::cout << "Repeated edge of different type: " <<
-        std::cout << "edge exists: " << edge_p.first << ": (N=" <<
-            (*g)[e].name << "; ID=" << (*g)[e].id << "; type=" <<
-            (*g)[e].type << " -> " << new_highway_type << std::endl;
+            std::cout << "edge exists: " << edge_p.first << ": (N=" <<
+                (*g)[e].name << "; ID=" << (*g)[e].id << "; type=" <<
+                (*g)[e].type << " -> " << new_highway_type << std::endl;
     } else
     {
         boost::add_edge (v1, v2, *oneEdge, *g);
