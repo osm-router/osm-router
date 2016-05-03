@@ -46,7 +46,7 @@
 
 int main(int argc, char *argv[]) {
     bool compact;
-    float xfrom, yfrom, xto, yto;
+    float xfrom, yfrom, xto, yto, theta;
     Bbox bbox;
     std::string xml_file, profile_file;
 
@@ -76,7 +76,12 @@ int main(int argc, char *argv[]) {
                 (&xto)->default_value (-0.117), "xto")
             ("yto,d", boost::program_options::value <float> 
                 (&yto)->default_value (51.518), "yto")
+            ("theta,t", boost::program_options::value <float> 
+                (&theta)->default_value (100.0), "theta")
             ;
+        // theta is the spectral radius which is scaled in inverse proportion to
+        // the scale of distances. The latter are in km, so theta has to be
+        // large.
 
         boost::program_options::options_description cmdline_options;
         cmdline_options.add(generic).add(config);
@@ -111,7 +116,8 @@ int main(int argc, char *argv[]) {
 
     Router router (xml_file, profile_file, 
             xfrom, yfrom, xto, yto,
-            bbox.lonmin, bbox.latmin, bbox.lonmax, bbox.latmax, compact); 
+            bbox.lonmin, bbox.latmin, bbox.lonmax, bbox.latmax, 
+            compact, theta); 
 };
 
 

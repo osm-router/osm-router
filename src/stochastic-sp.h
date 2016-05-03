@@ -52,11 +52,16 @@
 
 #include "Graph.h"
 
+#include <cstdlib> // for std::abs
+#include <complex> 
+
 #include <boost/unordered_map.hpp>
 
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/property_map/property_map.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
+
+#include <Eigen/Eigenvalues>
 
 const float FLOAT_MAX = std::numeric_limits <float>::max ();
 
@@ -76,8 +81,10 @@ class Router: public Graph
 
     private:
         bool _compactGraph;
+        float _theta;
     protected:
         float _xfrom, _yfrom, _xto, _yto;
+        std::vector <int> node_order;
     public:
         int err;
         int from_node, to_node;
@@ -85,22 +92,26 @@ class Router: public Graph
         std::vector <std::pair <int, float>> dists; // returned from dijkstra
         std::vector <std::pair <int, float>> pvec; // returned from make_pmat
         boost::numeric::ublas::matrix <float> cost_mat;
+        Eigen::MatrixXf wmat; // Eigen matrix so that eigenvals can be calculated
 
     Router (std::string xml_file, std::string profile_file,
             float xfrom, float yfrom, float xto, float yto,
             float lonmin, float latmin, float lonmax, float latmax,
-            bool compact)
+            bool compact, float theta)
         : _xfrom (xfrom), _yfrom (yfrom), _xto (xto), _yto (yto),
             Graph (compact, xml_file, profile_file, 
-                lonmin, latmin, lonmax, latmax)
+                lonmin, latmin, lonmax, latmax), _theta (theta)
     {
-        std::cout << "compact network has " << num_vertices (gr) << 
-            " nodes and " << ways.size () << " ways" << std::endl;
-        tempf = make_cost_mat ();
+        //std::cout << "compact network has " << num_vertices (gr) << 
+        //    " nodes and " << ways.size () << " ways" << std::endl;
+        from_node = nodeIndx [nearestNode (_xfrom, _yfrom)];
+        to_node = nodeIndx [nearestNode (_xto, _yto)];
+        tempf = make_cost_mat (from_node, to_node);
         std::cout << "cost mat has " << tempf << " finite entries" << std::endl;
     }
     ~Router ()
     {
+        node_order.resize (0);
         pvec.resize (0);
         cost_mat.resize (0, 0);
     }
@@ -109,7 +120,7 @@ class Router: public Graph
     int dijkstra (int fromNode);
     int get_dists ();
     int make_pvec (int fromNode, int toNode);
-    float make_cost_mat ();
+    float make_cost_mat (int fromNode, int toNode);
 };
 
 /************************************************************************
@@ -330,17 +341,33 @@ int Router::make_pvec (int fromNode, int toNode)
  ************************************************************************
  ************************************************************************/
 
-float Router::make_cost_mat ()
+float Router::make_cost_mat (int fromNode, int toNode)
 {
-    /* cost matrix of Saeren et al (2009), which contains finite entries only
-     * for direct connections between neighbouring vertices. All other values
-     * are set here to FLOAT_MAX. Returns proportion of matrix with finite
-     * values */
+    /* Fills both cost matrix (C) and W (Eq. 31) of Saeren et al (2009), which
+     * contains finite entries only for direct connections between neighbouring
+     * vertices. All other values are set here to FLOAT_MAX. Returns proportion
+     * of matrix with finite values 
+     *
+     * fromNode and toNode are only used to renumber the matrix so the 1st (row,
+     * column) is the start node and the last is the destination node. This
+     * routine also fills the node_order vector.
+     * */
 
     const int nv = num_vertices (gr);
-    int count = 0;
+    int n1, n2, count = 1;
+
+    // fill node_order
+    node_order.resize (nv);
+    node_order [fromNode] = 0;
+    node_order [toNode] = nv - 1;
+    for (int i=0; i<nv; i++)
+        if (i != fromNode && i != toNode)
+            node_order [i] = count++;
+    assert (count == (nv - 1));
+
     //cost_mat.resize (nv, nv);
     cost_mat = boost::numeric::ublas::scalar_matrix <float> (nv, nv, FLOAT_MAX);
+    //wmat = boost::numeric::ublas::scalar_matrix <float> (nv, nv, 0.0);
 
     /*
     // iterator over matrix:
@@ -362,6 +389,12 @@ float Router::make_cost_mat ()
         vertex_component = boost::get(&bundled_vertex_type::component, gr);
     boost::graph_traits <Graph_t>::out_edge_iterator ei, ei_end;
 
+    wmat.resize (nv, nv);
+    for (int i=0; i<nv; i++)
+        for (int j=0; j<nv; j++)
+            wmat (i, j) = 0.0;
+
+    count = 0;
     auto vs = boost::vertices (gr);
     for (auto it = vs.first; it != vs.second; ++it)
     {
@@ -373,12 +406,28 @@ float Router::make_cost_mat ()
                 edge_t e  = *boost::out_edges (*it, gr).first;
                 vertex_t v1 = boost::source (*ei, gr);
                 vertex_t v2 = boost::target (*ei, gr);
-                cost_mat (v1, v2) = gr [e].weight;
+                n1 = node_order [v1];
+                n2 = node_order [v2];
+                cost_mat (n1, n2) = gr [e].weight;
+                wmat (n1, n2) = exp (-_theta * cost_mat (n1, n2));
                 count++;
             }
-
         }
     }
+
+    // Check spectral radius of w
+    Eigen::EigenSolver <Eigen::MatrixXf> es2 (wmat);
+    float rho = 0.0, eabs;
+    auto evs = es2.eigenvalues ();
+    for (int i=0; i<evs.size (); i++)
+    {
+        eabs = std::abs (evs [i]);
+        if (eabs > rho)
+            rho = eabs;
+    }
+    if (rho >= 1.0)
+        std::cout << "Spectral radius = " << rho << std::endl;
+    assert (rho < 1.0);
 
     return (float) count / ((float) nv * (float) nv);
 }
