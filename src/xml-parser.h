@@ -30,6 +30,8 @@
  ***************************************************************************/
 
 
+#ifndef XML_H
+#define XML_H
 
 #include <curl/curl.h>
 
@@ -421,3 +423,4 @@ Node Xml::traverseNode (const boost::property_tree::ptree& pt, Node node)
     return node;
 } // end function Xml::traverseNode
 
+#endif

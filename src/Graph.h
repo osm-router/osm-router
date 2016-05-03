@@ -39,6 +39,9 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/property_map/property_map.hpp>
 
+#ifndef GRAPH_H
+#define GRAPH_H
+
 #define PI 3.1415926535897932384626433832795
 
 typedef boost::unordered_map <long long, int> umapInt; // for node int IDs
@@ -682,3 +685,5 @@ float Graph::getProfileWeight (std::vector <ProfilePair>* profile,
 
     return wt;
 }
+
+#endif

@@ -410,6 +410,8 @@ float Router::make_cost_mat (int fromNode, int toNode)
                 n2 = node_order [v2];
                 cost_mat (n1, n2) = gr [e].weight;
                 wmat (n1, n2) = exp (-_theta * cost_mat (n1, n2));
+                if (!gr [e].oneway)
+                    wmat (n2, n1) = wmat (n1, n2);
                 count++;
             }
         }
@@ -428,6 +430,19 @@ float Router::make_cost_mat (int fromNode, int toNode)
     if (rho >= 1.0)
         std::cout << "Spectral radius = " << rho << std::endl;
     assert (rho < 1.0);
+
+    // Equivalent, according to Saerens et al (although numerical comparisons
+    // suggest otherwise):
+    float rsum, rsum_max = 0.0;
+    for (int i=0; i<nv; i++)
+    {
+        rsum = 0.0;
+        for (int j=0; j<nv; j++)
+            rsum += wmat (i, j);
+        if (rsum > rsum_max)
+            rsum_max = rsum;
+    }
+    assert (rsum_max < 1.0);
 
     return (float) count / ((float) nv * (float) nv);
 }

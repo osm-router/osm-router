@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
             ("yto,d", boost::program_options::value <float> 
                 (&yto)->default_value (51.518), "yto")
             ("theta,t", boost::program_options::value <float> 
-                (&theta)->default_value (100.0), "theta")
+                (&theta)->default_value (110.0), "theta")
             ;
         // theta is the spectral radius which is scaled in inverse proportion to
         // the scale of distances. The latter are in km, so theta has to be
