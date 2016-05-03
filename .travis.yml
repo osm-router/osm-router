@@ -18,7 +18,7 @@ before_install:
     - cd build/
     - sudo cmake ..
     - sudo make install
-      #- export PATH=$PATH:PWD/eigen3/
+    - export PATH=$PATH:PWD/eigen3/
 
 install: 
     - sudo apt-get -y install libboost-dev libboost-program-options-dev
