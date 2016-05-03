@@ -16,7 +16,7 @@ before_install:
     - cd eigen3/
     - sudo mkdir build
     - cd build/
-    - cmake ..
+    - sudo cmake ..
     - sudo make install
       #- export PATH=$PATH:PWD/eigen3/
 
