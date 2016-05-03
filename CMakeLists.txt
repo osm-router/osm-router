@@ -12,7 +12,7 @@ ADD_DEFINITIONS(
     #-DCURL_STATICLIB
 )
 
-set (eigendir "/usr/local/include/eigen3/") # eigen for stochastic-sp module
+set (eigendir "/usr/include/eigen3/") # eigen for stochastic-sp module
 if (EXISTS ${eigendir} AND IS_DIRECTORY ${eigendir})
     ADD_DEFINITIONS(
         -I ${eigendir}
