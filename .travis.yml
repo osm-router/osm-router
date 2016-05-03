@@ -30,7 +30,6 @@ install:
     - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8"; fi
 
 script: 
-    - sudo mkdir build
     - cd build/
     - cmake ..
     - make
