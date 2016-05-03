@@ -13,7 +13,11 @@ before_install:
     # apt-get libeigen3-dev gets an obsolete version
     - wget http://bitbucket.org/eigen/eigen/get/3.2.8.tar.gz -O eigen3.tar.gz
     - tar -xf eigen3.tar.gz --transform 's!^[^/]\+\($\|/\)!eigen3\1!'
-    - cd eigen3/; sudo mkdir build; cd build/; cmake ..; sudo make install
+    - cd eigen3/
+    - sudo mkdir build
+    - cd build/
+    - cmake ..
+    - sudo make install
       #- export PATH=$PATH:PWD/eigen3/
 
 install: 
