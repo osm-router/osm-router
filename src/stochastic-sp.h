@@ -93,7 +93,7 @@ class Router: public Graph
         std::vector <std::pair <int, float>> pvec; // returned from make_pmat
         boost::numeric::ublas::matrix <float> cost_mat;
         //Eigen::MatrixXf wmat; // Eigen matrix so that eigenvals can be calculated
-        boost::numeric::ublas::matrix <float> wmat;
+        boost::numeric::ublas::matrix <float> wmat, pmat;
         std::vector <float> zn;
 
     Router (std::string xml_file, std::string profile_file,
@@ -107,9 +107,8 @@ class Router: public Graph
         from_node = nodeIndx [nearestNode (_xfrom, _yfrom)];
         to_node = nodeIndx [nearestNode (_xto, _yto)];
         tempf = make_cost_mat (from_node, to_node);
-        std::cout << "cost mat has " << tempf << " finite entries" << std::endl;
-        tempf = calc_zn ();
-        std::cout << "convergence = " << tempf << std::endl;
+        err = calc_zn ();
+        err = calc_pmat ();
     }
     ~Router ()
     {
@@ -117,6 +116,7 @@ class Router: public Graph
         pvec.resize (0);
         cost_mat.resize (0, 0);
         zn.resize (0);
+        pmat.resize (0, 0);
     }
 
     long long nearestNode (float lon0, float lat0);
@@ -124,7 +124,8 @@ class Router: public Graph
     int get_dists ();
     int make_pvec (int fromNode, int toNode);
     float make_cost_mat (int fromNode, int toNode);
-    float calc_zn ();
+    int calc_zn ();
+    int calc_pmat ();
 };
 
 /************************************************************************
@@ -464,43 +465,85 @@ float Router::make_cost_mat (int fromNode, int toNode)
  ************************************************************************
  ************************************************************************/
 
-float Router::calc_zn ()
+int Router::calc_zn ()
 {
     const int max_loops = 1e6;
     const float tol = 1.0e-6;
     int nloops = 0;
     float diff = FLOAT_MAX;
 
-    const int nv = num_vertices (gr);
+    const int nv = num_vertices (gr) - 1;
     std::vector <float> en, zn_old;
 
-    for (int i=0; i<(nv - 1); i++)
-        en.push_back (0.0);
-    en.push_back (1.0);
-
     for (int i=0; i<nv; i++)
+    {
+        en.push_back (0.0);
         zn_old.push_back (1.0 / (float) nv);
+    }
 
     zn.resize (nv);
 
     while (diff > tol)
     {
         diff = 0.0;
-        for (int j=0; j<nv; j++)
+        for (int i=0; i<nv; i++)
         {
-            zn [j] = 0.0;
-            for (int k=0; k<nv; k++)
-            {
-                zn [j] += wmat (k, j) * zn_old [j] + en [j];
-            }
-            diff += std::abs (zn [j] - zn_old [j]);
+            zn [i] = 0.0;
+            // next loop works because wmat (nv-1) is destination point
+            for (int j=0; j<nv; j++)
+                zn [i] += wmat (i, j) * zn_old [j] + en [i];
+            
+            diff += std::abs (zn [i] - zn_old [i]);
         }
-        for (int j=0; j<nv; j++)
-            zn_old [j] = zn [j];
+        for (int i=0; i<nv; i++)
+            zn_old [i] = zn [i];
         nloops++;
         if (nloops > max_loops)
             break;
     }
 
-    return diff;
+    return nloops;
+}
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                          ROUTER::CALC_PMAT                         **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int Router::calc_pmat ()
+{
+    const int nv = num_vertices (gr);
+
+    pmat.resize (nv, nv);
+
+    // TODO: Delete pmax
+    float pmax = 0.0;
+    for (int i=0; i<(nv - 1); i++)
+        for (int j=0; j<(nv - 1); j++)
+        {
+            if (zn [i] > 0.0 && zn [j] > 0.0 && wmat (i, j) > 0.0)
+                pmat (i, j) = zn [j] * wmat (i, j) / zn [i];
+            else
+                pmat (i, j) = 0.0;
+            if (pmat (i, j) > pmax)
+                pmax = pmat (i, j);
+        }
+    assert (pmax < 1.0);
+    // pmat is then the matrix Q of Saeren et al
+
+    for (int i=0; i<nv; i++)
+    {
+        pmat (nv - 1, i) = 0.0;
+        if (wmat (i, nv - 1) > 0.0)
+            pmat (i, nv - 1) = wmat (i, 0);
+        else
+            pmat (i, nv - 1) = 0.0;
+    }
+    pmat (nv - 1, nv - 1) = 1.0;
+
+    return 0;
 }
