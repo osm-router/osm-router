@@ -15,16 +15,6 @@ install:
     - sudo apt-get -y install libboost-dev libboost-program-options-dev
       libboost-filesystem-dev libboost-system-dev
     - sudo apt-get -y install libcurl4-openssl-dev 
-    # apt-get libeigen3-dev gets an obsolete version
-    - wget http://bitbucket.org/eigen/eigen/get/3.2.8.tar.gz -O eigen3.tar.gz
-    - tar -xf eigen3.tar.gz --transform 's!^[^/]\+\($\|/\)!eigen3\1!'
-    - cd eigen3/
-    - sudo mkdir build
-    - cd build/
-    - sudo cmake ..
-    - sudo make install
-      #- export PATH=$PATH:PWD/eigen3/
-    - cd ../..
     # force g++ compiler versions, but this is not necessary for clang
     - if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.8; fi
     - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8"; fi

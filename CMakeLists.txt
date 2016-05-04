@@ -12,13 +12,6 @@ ADD_DEFINITIONS(
     #-DCURL_STATICLIB
 )
 
-set (eigendir "/usr/local/include/eigen3/") # eigen for stochastic-sp module
-if (EXISTS ${eigendir} AND IS_DIRECTORY ${eigendir})
-    ADD_DEFINITIONS(
-        -I ${eigendir}
-        )
-endif()
-
 set(SOURCES_GRAPH src/Graph.c++)
 set(SOURCES_XML src/xml-parser.c++)
 set(SOURCES_ROUTER src/Router.c++)

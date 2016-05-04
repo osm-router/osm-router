@@ -61,8 +61,6 @@
 #include <boost/property_map/property_map.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
 
-#include <Eigen/Eigenvalues>
-
 const float FLOAT_MAX = std::numeric_limits <float>::max ();
 
 struct Bbox
@@ -92,7 +90,6 @@ class Router: public Graph
         std::vector <std::pair <int, float>> dists; // returned from dijkstra
         std::vector <std::pair <int, float>> pvec; // returned from make_pmat
         boost::numeric::ublas::matrix <float> cost_mat;
-        //Eigen::MatrixXf wmat; // Eigen matrix so that eigenvals can be calculated
         boost::numeric::ublas::matrix <float> wmat, pmat;
         std::vector <float> zn;
 
@@ -109,6 +106,7 @@ class Router: public Graph
         tempf = make_cost_mat (from_node, to_node);
         err = calc_zn ();
         err = calc_pmat ();
+        err = dump_routes ();
     }
     ~Router ()
     {
@@ -121,11 +119,11 @@ class Router: public Graph
 
     long long nearestNode (float lon0, float lat0);
     int dijkstra (int fromNode);
-    int get_dists ();
     int make_pvec (int fromNode, int toNode);
     float make_cost_mat (int fromNode, int toNode);
     int calc_zn ();
     int calc_pmat ();
+    int dump_routes ();
 };
 
 /************************************************************************
@@ -265,29 +263,6 @@ int Router::dijkstra (int fromNode)
 }
 
 
-/************************************************************************
- ************************************************************************
- **                                                                    **
- **                          ROUTER::GET_DISTS                         **
- **                                                                    **
- ************************************************************************
- ************************************************************************/
-
-int Router::get_dists ()
-{
-    assert (dists.size () > 0); // Asserts that dijkstra has been run.
-
-    auto vs = dists;
-    for (auto it = dists.begin (); it != dists.end (); ++it)
-    {
-        std::cout << "(" << (*it).first << ", " << (*it).second <<
-            ")" << std::endl;
-    }
-
-    return 0;
-}
-
-
 
 /************************************************************************
  ************************************************************************
@@ -300,6 +275,8 @@ int Router::get_dists ()
 int Router::make_pvec (int fromNode, int toNode)
 {
     /*
+     * TODO: Delete this!
+     *
      * One SP produces a vector of distances from an origin to all intermediate
      * nodes.  Calculating from the destination produces the complementary
      * vector of distances from each of intermediate nodes to the destination.
@@ -394,13 +371,6 @@ float Router::make_cost_mat (int fromNode, int toNode)
         vertex_component = boost::get(&bundled_vertex_type::component, gr);
     boost::graph_traits <Graph_t>::out_edge_iterator ei, ei_end;
 
-    /* only for Eigen::MatrixXf type
-    wmat.resize (nv, nv);
-    for (int i=0; i<nv; i++)
-        for (int j=0; j<nv; j++)
-            wmat (i, j) = 0.0;
-    */
-
     count = 0;
     auto vs = boost::vertices (gr);
     for (auto it = vs.first; it != vs.second; ++it)
@@ -424,24 +394,10 @@ float Router::make_cost_mat (int fromNode, int toNode)
         }
     }
 
-    // Check spectral radius of w
-    /*
-    Eigen::EigenSolver <Eigen::MatrixXf> es2 (wmat);
-    float rho = 0.0, eabs;
-    auto evs = es2.eigenvalues ();
-    for (int i=0; i<evs.size (); i++)
-    {
-        eabs = std::abs (evs [i]);
-        if (eabs > rho)
-            rho = eabs;
-    }
-    if (rho >= 1.0)
-        std::cout << "Spectral radius = " << rho << std::endl;
-    assert (rho < 1.0);
-    */
-
-    // Equivalent, according to Saerens et al (although numerical comparisons
-    // suggest otherwise):
+    /* Method suggested by Saerens et al to check spectral radius without
+     * needing to calculate eigenvalues. (Note that numerical comparisons
+     * suggest this does not work how they think, but it seems to roughly do the
+     * job regardless and is computationally enormously easier.) */
     float rsum, rsum_max = 0.0;
     for (int i=0; i<nv; i++)
     {
@@ -544,6 +500,22 @@ int Router::calc_pmat ()
             pmat (i, nv - 1) = 0.0;
     }
     pmat (nv - 1, nv - 1) = 1.0;
+
+    return 0;
+}
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                         ROUTER::DUMP_ROUTES                        **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int Router::dump_routes ()
+{
+    const int nv = num_vertices (gr);
 
     return 0;
 }
