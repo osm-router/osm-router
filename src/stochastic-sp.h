@@ -60,6 +60,7 @@
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/property_map/property_map.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
+#include <boost/numeric/ublas/matrix_proxy.hpp>
 
 const float FLOAT_MAX = std::numeric_limits <float>::max ();
 
@@ -104,8 +105,8 @@ class Router: public Graph
         from_node = nodeIndx [nearestNode (_xfrom, _yfrom)];
         to_node = nodeIndx [nearestNode (_xto, _yto)];
         tempf = make_cost_mat (from_node, to_node);
-        err = calc_zn ();
-        err = calc_pmat ();
+        err = calc_zn (to_node);
+        err = calc_pmat (to_node);
         err = dump_routes ();
     }
     ~Router ()
@@ -121,8 +122,8 @@ class Router: public Graph
     int dijkstra (int fromNode);
     int make_pvec (int fromNode, int toNode);
     float make_cost_mat (int fromNode, int toNode);
-    int calc_zn ();
-    int calc_pmat ();
+    int calc_zn (int toNode);
+    int calc_pmat (int toNode);
     int dump_routes ();
 };
 
@@ -336,7 +337,7 @@ float Router::make_cost_mat (int fromNode, int toNode)
      * */
 
     const int nv = num_vertices (gr);
-    int n1, n2, count = 1;
+    int count = 1;
 
     // fill node_order
     node_order.resize (nv);
@@ -350,20 +351,6 @@ float Router::make_cost_mat (int fromNode, int toNode)
     //cost_mat.resize (nv, nv);
     cost_mat = boost::numeric::ublas::scalar_matrix <float> (nv, nv, FLOAT_MAX);
     wmat = boost::numeric::ublas::scalar_matrix <float> (nv, nv, 0.0);
-
-    /*
-    // iterator over matrix:
-    typedef boost::numeric::ublas::matrix <float> matrix;
-    for (matrix::iterator1 itr1 = cost_mat.begin1 (); 
-            itr1 != cost_mat.end1 (); ++itr1)
-    {
-        for (matrix::iterator2 itr2 = itr1.begin (); itr2 != itr1.end (); ++itr2)
-        {
-            std::cout << (*itr2) << ", ";
-        }
-        std::cout << std::endl;
-    }
-    */
 
     typedef boost::graph_traits <Graph_t>::vertex_descriptor vertex_t;
     typedef boost::graph_traits <Graph_t>::edge_descriptor edge_t;
@@ -383,27 +370,42 @@ float Router::make_cost_mat (int fromNode, int toNode)
                 edge_t e  = *boost::out_edges (*it, gr).first;
                 vertex_t v1 = boost::source (*ei, gr);
                 vertex_t v2 = boost::target (*ei, gr);
-                n1 = node_order [v1];
-                n2 = node_order [v2];
-                cost_mat (n1, n2) = gr [e].weight;
-                wmat (n1, n2) = exp (-_theta * cost_mat (n1, n2));
+                cost_mat (v1, v2) = gr [e].weight;
+                wmat (v1, v2) = exp (-_theta * cost_mat (v1, v2));
                 if (!gr [e].oneway)
-                    wmat (n2, n1) = wmat (n1, n2);
+                    wmat (v2, v1) = wmat (v1, v2);
                 count++;
             }
         }
     }
+
+    // Then set cost_mat for start and end nodes
+    typedef boost::numeric::ublas::matrix <float> Matf;
+    boost::numeric::ublas::matrix_row <Matf> mr (cost_mat, toNode);
+    for (unsigned i=0; i<mr.size (); ++i) // mr is a pointer
+        mr (i) = FLOAT_MAX;
+    boost::numeric::ublas::matrix_column <Matf> mc (cost_mat, toNode);
+    for (unsigned i=0; i<mc.size (); ++i)
+        if (mc (i) != FLOAT_MAX)
+            mc (i) = 0.0;
+    // could use matrix_range, but direct index seems easier
+    cost_mat (toNode, toNode) = 0.0;
+
+    // wmat needs only one row changed:
+    boost::numeric::ublas::matrix_row <Matf> mrw (wmat, toNode);
+    for (unsigned i=0; i<mrw.size (); ++i) 
+        mrw (i) = 0.0;
 
     /* Method suggested by Saerens et al to check spectral radius without
      * needing to calculate eigenvalues. (Note that numerical comparisons
      * suggest this does not work how they think, but it seems to roughly do the
      * job regardless and is computationally enormously easier.) */
     float rsum, rsum_max = 0.0;
-    for (int i=0; i<nv; i++)
+    for (Matf::iterator1 itr1 = wmat.begin1 (); itr1 != wmat.end1 (); ++itr1)
     {
         rsum = 0.0;
-        for (int j=0; j<nv; j++)
-            rsum += wmat (i, j);
+        for (Matf::iterator2 itr2 = itr1.begin (); itr2 != itr1.end (); ++itr2)
+            rsum += (*itr2);
         if (rsum > rsum_max)
             rsum_max = rsum;
     }
@@ -421,14 +423,14 @@ float Router::make_cost_mat (int fromNode, int toNode)
  ************************************************************************
  ************************************************************************/
 
-int Router::calc_zn ()
+int Router::calc_zn (int toNode)
 {
     const int max_loops = 1e6;
     const float tol = 1.0e-6;
     int nloops = 0;
     float diff = FLOAT_MAX;
 
-    const int nv = num_vertices (gr) - 1;
+    const int nv = num_vertices (gr);
     std::vector <float> en, zn_old;
 
     for (int i=0; i<nv; i++)
@@ -436,6 +438,7 @@ int Router::calc_zn ()
         en.push_back (0.0);
         zn_old.push_back (1.0 / (float) nv);
     }
+    en [toNode] = 1.0;
 
     zn.resize (nv);
 
@@ -445,7 +448,6 @@ int Router::calc_zn ()
         for (int i=0; i<nv; i++)
         {
             zn [i] = 0.0;
-            // next loop works because wmat (nv-1) is destination point
             for (int j=0; j<nv; j++)
                 zn [i] += wmat (i, j) * zn_old [j] + en [i];
             
@@ -470,7 +472,7 @@ int Router::calc_zn ()
  ************************************************************************
  ************************************************************************/
 
-int Router::calc_pmat ()
+int Router::calc_pmat (int toNode)
 {
     const int nv = num_vertices (gr);
 
@@ -478,8 +480,8 @@ int Router::calc_pmat ()
 
     // TODO: Delete pmax
     float pmax = 0.0;
-    for (int i=0; i<(nv - 1); i++)
-        for (int j=0; j<(nv - 1); j++)
+    for (int i=0; i<nv; i++)
+        for (int j=0; j<nv; j++)
         {
             if (zn [i] > 0.0 && zn [j] > 0.0 && wmat (i, j) > 0.0)
                 pmat (i, j) = zn [j] * wmat (i, j) / zn [i];
@@ -488,18 +490,18 @@ int Router::calc_pmat ()
             if (pmat (i, j) > pmax)
                 pmax = pmat (i, j);
         }
-    assert (pmax < 1.0);
+    assert (pmax <= 1.0);
     // pmat is then the matrix Q of Saeren et al
 
     for (int i=0; i<nv; i++)
     {
-        pmat (nv - 1, i) = 0.0;
-        if (wmat (i, nv - 1) > 0.0)
-            pmat (i, nv - 1) = wmat (i, 0);
+        pmat (toNode, i) = 0.0;
+        if (wmat (i, toNode) > 0.0)
+            pmat (i, toNode) = wmat (i, toNode);
         else
-            pmat (i, nv - 1) = 0.0;
+            pmat (i, toNode) = 0.0;
     }
-    pmat (nv - 1, nv - 1) = 1.0;
+    pmat (toNode, toNode) = 1.0;
 
     return 0;
 }
