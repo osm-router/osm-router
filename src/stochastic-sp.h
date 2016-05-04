@@ -107,7 +107,7 @@ class Router: public Graph
         tempf = make_cost_mat (from_node, to_node);
         err = calc_zn (to_node);
         err = calc_pmat (to_node);
-        err = dump_routes ();
+        err = dump_routes (from_node, to_node);
     }
     ~Router ()
     {
@@ -124,7 +124,7 @@ class Router: public Graph
     float make_cost_mat (int fromNode, int toNode);
     int calc_zn (int toNode);
     int calc_pmat (int toNode);
-    int dump_routes ();
+    int dump_routes (int fromNode, int toNode);
 };
 
 /************************************************************************
@@ -515,9 +515,59 @@ int Router::calc_pmat (int toNode)
  ************************************************************************
  ************************************************************************/
 
-int Router::dump_routes ()
+int Router::dump_routes (int fromNode, int toNode)
 {
     const int nv = num_vertices (gr);
+    std::ofstream  out_file;
 
+    boost::property_map< Graph_t, long long bundled_vertex_type::* >::type 
+        vertex_id = boost::get(&bundled_vertex_type::id, gr);
+    boost::property_map< Graph_t, float bundled_vertex_type::* >::type 
+        vertex_lat = boost::get(&bundled_vertex_type::lat, gr);
+    boost::property_map< Graph_t, float bundled_vertex_type::* >::type 
+        vertex_lon = boost::get(&bundled_vertex_type::lon, gr);
+    boost::property_map< Graph_t, int bundled_vertex_type::* >::type 
+        vertex_component = boost::get(&bundled_vertex_type::component, gr);
+
+    std::cout << "from = (" << vertex_lon [fromNode] << ", " <<
+        vertex_lat [fromNode] << "); to = (" << vertex_lon [toNode] << 
+        ", " << vertex_lat [toNode] << ")" << std::endl;
+
+    out_file.open ("junk.txt", std::ofstream::out);
+    
+    for (int i=0; i<pmat.size1 (); ++i)
+        for (int j=0; j<pmat.size2 (); ++j)
+            if (pmat (i, j) > 0.0)
+                out_file << vertex_lon [i] << "," << vertex_lat [i] << "," <<
+                    vertex_lon [j] << "," << vertex_lat [j] << "," <<
+                    pmat (i, j) << std::endl;
+
+    out_file.close ();
+
+    /* R script
+    plotgraph <- function ()
+    {
+        from <- c (-0.117499, 51.5172)
+        to <- c (-0.117428, 51.5179)
+        fname <- "./build/junk.txt"
+        dat <- read.csv (fname, sep=",", header=FALSE)
+        xlims <- range (c (dat [,1], dat [,3]))
+        ylims <- range (c (dat [,2], dat [,4]))
+        plot.new ()
+        par (mar=rep (0, 4))
+        plot (NULL, NULL, xlim=xlims, ylim=ylims,
+              xaxt="n", yaxt="n", xlab="", ylab="")
+        junk <- apply (dat, 1, function (i)
+                       lines (c (i [1], i [3]), c (i [2], i [4]), lwd=3*i[5]))
+        points (from, pch=1, cex=2, col="green")
+        points (to, pch=1, cex=2, col="red")
+
+        x <- c (dat [,1], dat [,3])
+        y <- c (dat [,2], dat [,4])
+        dat2 <- cbind (x, y)
+        dat3 <- dat2 [which (!duplicated (dat2)),]
+        points (dat2, pch=1)
+    }
+    */
     return 0;
 }
