@@ -83,7 +83,6 @@ class Router: public Graph
         float _theta;
     protected:
         float _xfrom, _yfrom, _xto, _yto;
-        std::vector <int> node_order;
     public:
         int err;
         int from_node, to_node;
@@ -91,8 +90,8 @@ class Router: public Graph
         std::vector <std::pair <int, float>> dists; // returned from dijkstra
         std::vector <std::pair <int, float>> pvec; // returned from make_pmat
         boost::numeric::ublas::matrix <float> cost_mat;
-        boost::numeric::ublas::matrix <float> wmat, pmat;
-        std::vector <float> zn;
+        boost::numeric::ublas::matrix <float> wmat, pmat, nmat;
+        std::vector <float> z1, zn;
 
     Router (std::string xml_file, std::string profile_file,
             float xfrom, float yfrom, float xto, float yto,
@@ -107,23 +106,31 @@ class Router: public Graph
         tempf = make_cost_mat (from_node, to_node);
         err = calc_zn (to_node);
         err = calc_pmat (to_node);
+        err = calc_z1 (from_node);
+        tempf = calc_energy (from_node, to_node);
+        std::cout << "-----energy = " << tempf << "-----" << std::endl;
+        err = calc_link_density (from_node, to_node);
         err = dump_routes (from_node, to_node);
     }
     ~Router ()
     {
-        node_order.resize (0);
         pvec.resize (0);
         cost_mat.resize (0, 0);
+        z1.resize (0);
         zn.resize (0);
         pmat.resize (0, 0);
+        nmat.resize (0, 0);
     }
 
     long long nearestNode (float lon0, float lat0);
     int dijkstra (int fromNode);
     int make_pvec (int fromNode, int toNode);
     float make_cost_mat (int fromNode, int toNode);
+    int calc_z1 (int fromNode);
     int calc_zn (int toNode);
     int calc_pmat (int toNode);
+    float calc_energy (int fromNode, int toNode);
+    int calc_link_density (int fromNode, int toNode);
     int dump_routes (int fromNode, int toNode);
 };
 
@@ -188,7 +195,7 @@ long long Router::nearestNode (float lon0, float lat0)
     }
 
     return node;
-} // end function calcDist
+} // end function nearestNode
 
 
 
@@ -261,14 +268,14 @@ int Router::dijkstra (int fromNode)
     assert (dists.size () == num_vertices (gr));
 
     return 0;
-}
+} // end function Router::Dijkstra
 
 
 
 /************************************************************************
  ************************************************************************
  **                                                                    **
- **                          ROUTER::MAKE_PMAT                         **
+ **                          ROUTER::MAKE_PVEC                         **
  **                                                                    **
  ************************************************************************
  ************************************************************************/
@@ -313,7 +320,7 @@ int Router::make_pvec (int fromNode, int toNode)
     }
 
     return 0;
-}
+} // end function Router::make_pvec
 
 
 /************************************************************************
@@ -332,21 +339,10 @@ float Router::make_cost_mat (int fromNode, int toNode)
      * of matrix with finite values 
      *
      * fromNode and toNode are only used to renumber the matrix so the 1st (row,
-     * column) is the start node and the last is the destination node. This
-     * routine also fills the node_order vector.
-     * */
+     * column) is the start node and the last is the destination node. */
 
     const int nv = num_vertices (gr);
     int count = 1;
-
-    // fill node_order
-    node_order.resize (nv);
-    node_order [fromNode] = 0;
-    node_order [toNode] = nv - 1;
-    for (int i=0; i<nv; i++)
-        if (i != fromNode && i != toNode)
-            node_order [i] = count++;
-    assert (count == (nv - 1));
 
     //cost_mat.resize (nv, nv);
     cost_mat = boost::numeric::ublas::scalar_matrix <float> (nv, nv, FLOAT_MAX);
@@ -384,12 +380,14 @@ float Router::make_cost_mat (int fromNode, int toNode)
     boost::numeric::ublas::matrix_row <Matf> mr (cost_mat, toNode);
     for (unsigned i=0; i<mr.size (); ++i) // mr is a pointer
         mr (i) = FLOAT_MAX;
+    /*
     boost::numeric::ublas::matrix_column <Matf> mc (cost_mat, toNode);
     for (unsigned i=0; i<mc.size (); ++i)
         if (mc (i) != FLOAT_MAX)
             mc (i) = 0.0;
+    */
     // could use matrix_range, but direct index seems easier
-    cost_mat (toNode, toNode) = 0.0;
+    cost_mat (toNode, toNode) = FLOAT_MAX;
 
     // wmat needs only one row changed:
     boost::numeric::ublas::matrix_row <Matf> mrw (wmat, toNode);
@@ -397,22 +395,73 @@ float Router::make_cost_mat (int fromNode, int toNode)
         mrw (i) = 0.0;
 
     /* Method suggested by Saerens et al to check spectral radius without
-     * needing to calculate eigenvalues. (Note that numerical comparisons
-     * suggest this does not work how they think, but it seems to roughly do the
-     * job regardless and is computationally enormously easier.) */
+     * needing to calculate eigenvalues. */
     float rsum, rsum_max = 0.0;
-    for (Matf::iterator1 itr1 = wmat.begin1 (); itr1 != wmat.end1 (); ++itr1)
+    for (Matf::iterator2 itr2 = wmat.begin2 (); itr2 != wmat.end2 (); ++itr2)
     {
         rsum = 0.0;
-        for (Matf::iterator2 itr2 = itr1.begin (); itr2 != itr1.end (); ++itr2)
-            rsum += (*itr2);
+        for (Matf::iterator1 itr1 = itr2.begin (); itr1 != itr2.end (); ++itr1)
+            rsum += (*itr1);
         if (rsum > rsum_max)
             rsum_max = rsum;
     }
-    assert (rsum_max < 1.0);
+    // Saeren et al: "the spectral radius ... is always smaller or equal than
+    // its maximum absolute row sum norm" - this row sum can therefore be larger
+    // than one.  TODO: Devise a better heuristic for spectral radius
+    //assert (rsum_max < 1.0);
 
     return (float) count / ((float) nv * (float) nv);
-}
+} // end Router::make_cost_mat
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                           ROUTER::CALC_Z1                          **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int Router::calc_z1 (int fromNode)
+{
+    const int max_loops = 1e6;
+    const float tol = 1.0e-6;
+    int nloops = 0;
+    float diff = FLOAT_MAX;
+
+    const int nv = num_vertices (gr);
+    std::vector <float> z1_old;
+
+    for (int i=0; i<nv; i++)
+        z1_old.push_back (1.0 / (float) nv);
+
+    z1.resize (nv);
+
+    while (diff > tol)
+    {
+        diff = 0.0;
+        for (int i=0; i<nv; i++)
+        {
+            z1 [i] = 0.0;
+            for (int j=0; j<nv; j++)
+                if (j == fromNode)
+                    z1 [i] += wmat (j, i);
+                else
+                    z1 [i] += wmat (j, i) * z1_old [j];
+            
+            if (i != fromNode)
+                diff += std::abs (z1 [i] - z1_old [i]);
+        }
+        for (int i=0; i<nv; i++)
+            z1_old [i] = z1 [i];
+        nloops++;
+        if (nloops > max_loops)
+            break;
+    }
+    z1 [fromNode] = 1.0;
+
+    return nloops;
+} // end Router::calc_z1
 
 
 /************************************************************************
@@ -431,14 +480,10 @@ int Router::calc_zn (int toNode)
     float diff = FLOAT_MAX;
 
     const int nv = num_vertices (gr);
-    std::vector <float> en, zn_old;
+    std::vector <float> zn_old;
 
     for (int i=0; i<nv; i++)
-    {
-        en.push_back (0.0);
         zn_old.push_back (1.0 / (float) nv);
-    }
-    en [toNode] = 1.0;
 
     zn.resize (nv);
 
@@ -449,9 +494,13 @@ int Router::calc_zn (int toNode)
         {
             zn [i] = 0.0;
             for (int j=0; j<nv; j++)
-                zn [i] += wmat (i, j) * zn_old [j] + en [i];
+                if (j == toNode)
+                    zn [i] += wmat (i, j);
+                else
+                    zn [i] += wmat (i, j) * zn_old [j];
             
-            diff += std::abs (zn [i] - zn_old [i]);
+            if (i != toNode)
+                diff += std::abs (zn [i] - zn_old [i]);
         }
         for (int i=0; i<nv; i++)
             zn_old [i] = zn [i];
@@ -459,9 +508,10 @@ int Router::calc_zn (int toNode)
         if (nloops > max_loops)
             break;
     }
+    zn [toNode] = 1.0;
 
     return nloops;
-}
+} // end Router::calc_zn
 
 
 /************************************************************************
@@ -490,9 +540,11 @@ int Router::calc_pmat (int toNode)
             if (pmat (i, j) > pmax)
                 pmax = pmat (i, j);
         }
-    assert (pmax <= 1.0);
+    // NOTE: pmat values are commonly 1+O(10^-7) or so
+    // assert (pmax <= 1.0);
     // pmat is then the matrix Q of Saeren et al
 
+    /*
     for (int i=0; i<nv; i++)
     {
         pmat (toNode, i) = 0.0;
@@ -502,9 +554,75 @@ int Router::calc_pmat (int toNode)
             pmat (i, toNode) = 0.0;
     }
     pmat (toNode, toNode) = 1.0;
+    */
 
     return 0;
-}
+} // end Router::calc_pmat
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                         ROUTER::CALC_ENERGY                        **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+float Router::calc_energy (int fromNode, int toNode)
+{
+    float tempf, energy = 0.0;
+    const int nv = num_vertices (gr);
+
+    boost::numeric::ublas::matrix <float> zmat, wmat2;
+    zmat.resize (nv, nv);
+    wmat2.resize (nv, nv);
+
+    for (int i=0; i<nv; i++)
+        for (int j=0; j<nv; j++)
+        {
+            zmat (i, j) = z1 [i] * zn [j];
+            wmat2 (i, j) = -wmat (i, j) * cost_mat (i, j);
+        }
+    // This is Saerens et al Eq. (36) (with extra detail in Eq. 69).
+    // The *wrong* way is to exchange (from, to)Node.
+    for (int i=0; i<nv; i++)
+    {
+        tempf = 0.0;
+        for (int j=0; j<nv; j++)
+            tempf += zmat (fromNode, j) * wmat (j, i);
+        energy += zmat (i, toNode) * tempf;
+    }
+    energy = energy / zn [fromNode];
+
+    zmat.resize (0, 0);
+    wmat2.resize (0, 0);
+
+    return energy;
+} // end Router::calc_energy
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                      ROUTER::CALC_LINK_DENSITY                     **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int Router::calc_link_density (int fromNode, int toNode)
+{
+    float tempf;
+    const int nv = num_vertices (gr);
+
+    nmat.resize (nv, nv);
+
+    for (int i=0; i<nv; i++)
+        for (int j=0; j<nv; j++)
+            nmat (i, j) = z1 [i] * zn [j] * wmat (i, j) / z1 [toNode];
+            // nmat (i, j) = z1 [i] * zn [j] * wmat (i, j) / zn [fromNode];
+
+    return 0;
+} // end Router::calc_link_density
 
 
 /************************************************************************
@@ -517,6 +635,7 @@ int Router::calc_pmat (int toNode)
 
 int Router::dump_routes (int fromNode, int toNode)
 {
+    // Dumps the link densities
     const int nv = num_vertices (gr);
     std::ofstream  out_file;
 
@@ -540,15 +659,15 @@ int Router::dump_routes (int fromNode, int toNode)
             if (pmat (i, j) > 0.0)
                 out_file << vertex_lon [i] << "," << vertex_lat [i] << "," <<
                     vertex_lon [j] << "," << vertex_lat [j] << "," <<
-                    pmat (i, j) << std::endl;
+                    nmat (i, j) << std::endl;
 
     out_file.close ();
 
     /* R script
     plotgraph <- function ()
     {
-        from <- c (-0.117499, 51.5172)
-        to <- c (-0.117428, 51.5179)
+        from <- c (-0.120048, 51.5151)
+        to <- c (-0.116075, 51.5199)
         fname <- "./build/junk.txt"
         dat <- read.csv (fname, sep=",", header=FALSE)
         xlims <- range (c (dat [,1], dat [,3]))
@@ -557,16 +676,14 @@ int Router::dump_routes (int fromNode, int toNode)
         par (mar=rep (0, 4))
         plot (NULL, NULL, xlim=xlims, ylim=ylims,
               xaxt="n", yaxt="n", xlab="", ylab="")
+        x <- log10 (dat [,5]) # passage density
+        x [!is.finite (x)] <- NA
+        dat [,5] <- 5 * (x - min (x, na.rm=TRUE)) / diff (range (x, na.rm=TRUE))
+
         junk <- apply (dat, 1, function (i)
                        lines (c (i [1], i [3]), c (i [2], i [4]), lwd=3*i[5]))
-        points (from, pch=1, cex=2, col="green")
-        points (to, pch=1, cex=2, col="red")
-
-        x <- c (dat [,1], dat [,3])
-        y <- c (dat [,2], dat [,4])
-        dat2 <- cbind (x, y)
-        dat3 <- dat2 [which (!duplicated (dat2)),]
-        points (dat2, pch=1)
+        points (from [1], from [2], pch=1, cex=2, col="green")
+        points (to [1], to [2], pch=1, cex=2, col="red")
     }
     */
     return 0;

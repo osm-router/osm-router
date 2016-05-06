@@ -69,15 +69,15 @@ int main(int argc, char *argv[]) {
                 (&profile_file)->default_value ("../profile.cfg"), 
                 "profile file name")
             ("xfrom,a", boost::program_options::value <float> 
-                (&xfrom)->default_value (-0.118), "xfrom")
+                (&xfrom)->default_value (-0.12), "xfrom")
             ("yfrom,b", boost::program_options::value <float> 
-                (&yfrom)->default_value (51.517), "yfrom")
+                (&yfrom)->default_value (51.515), "yfrom")
             ("xto,c", boost::program_options::value <float> 
-                (&xto)->default_value (-0.117), "xto")
+                (&xto)->default_value (-0.115), "xto")
             ("yto,d", boost::program_options::value <float> 
-                (&yto)->default_value (51.518), "yto")
+                (&yto)->default_value (51.52), "yto")
             ("theta,t", boost::program_options::value <float> 
-                (&theta)->default_value (110.0), "theta")
+                (&theta)->default_value (1000.0), "theta")
             ;
         // theta is the spectral radius which is scaled in inverse proportion to
         // the scale of distances. The latter are in km, so theta has to be
