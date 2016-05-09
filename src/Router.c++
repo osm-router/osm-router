@@ -785,6 +785,7 @@ float Ways::calcDist (std::vector <float> x, std::vector <float> y)
  ************************************************************************
  ************************************************************************/
 
+
 int Ways::getConnected ()
 {
     std::vector<int> compvec(num_vertices(gFull));
@@ -1159,4 +1160,39 @@ void Ways::writeDMat ()
     }
 
     out_file.close ();
+};
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                         ROUTEBETWEENPOINTS                         **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+
+void Ways::routeBetweenPoints ()
+{
+    std::cout << "Getting distances between routing points";
+    std::cout.flush ();
+    count = 0;
+    for (std::vector<RoutingPoint>::iterator itr = RoutingPointsList.begin ();
+            itr != RoutingPointsList.end(); itr++)
+    {
+        err = dijkstra (itr->nodeIndex);
+        assert (dists.size () == RoutingPointsList.size ());
+        std::cout << "\rGetting distances between routing points " <<
+            count << "/" << RoutingPointsList.size () <<
+            " ";
+        std::cout.flush ();
+        count++;
+    }
+    std::cout << "\rGetting distances between routing points " <<
+        RoutingPointsList.size () << "/" << RoutingPointsList.size
+        () << std::endl;
+    std::cout << "done." << std::endl;
+
+    writeDMat ();
+    gCompact.clear ();
 };

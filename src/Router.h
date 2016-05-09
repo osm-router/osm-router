@@ -183,7 +183,7 @@ class Ways
         //count weighting profiles
 
         for (boost::filesystem::directory_iterator itCount (profiles);
-        itCount != boost::filesystem::directory_iterator (); itCount++)
+                itCount != boost::filesystem::directory_iterator (); itCount++)
         {
             numWeightingProfiles++;
         }
@@ -223,27 +223,7 @@ class Ways
 
                 err = readCompactWays (&mTwister, &norm_dist);
                 err = remapRoutingPoints ();
-
-                std::cout << "Getting distances between routing points";
-                std::cout.flush ();
-                count = 0;
-                for (std::vector<RoutingPoint>::iterator itr=RoutingPointsList.begin();
-                        itr != RoutingPointsList.end(); itr++)
-                {
-                    err = dijkstra (itr->nodeIndex);
-                    assert (dists.size () == RoutingPointsList.size ());
-                    std::cout << "\rGetting distances between routing points " <<
-                        count << "/" << RoutingPointsList.size () << " ";
-                    std::cout.flush ();
-                    count++;
-                }
-                std::cout << "\rGetting distances between routing points " <<
-                    RoutingPointsList.size () << "/" << RoutingPointsList.size
-                    () << std::endl;
-                std::cout << "done." << std::endl;
-
-                writeDMat ();
-                gCompact.clear ();
+                routeBetweenPoints ();
             }
         }
     }
@@ -257,7 +237,7 @@ class Ways
     std::string returnCity () { return _city; }
 
     void setProfile (const std::string& profileName, std::vector <ProfilePair>*
-    profile);
+            profile);
     int getBBox ();
     int readNodes ();
     int readAllWays ();
@@ -267,6 +247,7 @@ class Ways
     int readCompactWays (std::mt19937* mTwister, std::normal_distribution<>* norm_dist);
     int dijkstra (long long fromNode);
     void writeDMat ();
+    void routeBetweenPoints ();
 
     float calcDist (std::vector <float> x, std::vector <float> y);
     long long nearestNode (float lon0, float lat0);
@@ -275,7 +256,7 @@ class Ways
 };
 
 void Ways::setProfile (const std::string& profileName, std::vector
-<ProfilePair>* profile)
+        <ProfilePair>* profile)
 {
     const std::string configfile = "../data/weighting_profiles/profile_" + \
                                     profileName + ".cfg"; 
