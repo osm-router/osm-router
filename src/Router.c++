@@ -57,9 +57,9 @@ int main(int argc, char *argv[]) {
         boost::program_options::options_description config("Configuration");
         config.add_options()
             ("city,c", boost::program_options::value <std::string> 
-                (&city)->default_value ("london"), "city")
+             (&city)->default_value ("london"), "city")
             ("stdDev,s", boost::program_options::value <float>
-                (&stdDev)->default_value (0), "standard deviation of edge weights")
+             (&stdDev)->default_value (0), "standard deviation of edge weights")
             ;
 
         boost::program_options::options_description cmdline_options;
@@ -121,7 +121,7 @@ int Ways::getBBox ()
     std::string linetxt, txt, fname;
     fname = "../data/routing_points_" + getCity () + ".txt";
     std::ifstream in_file;
-    
+
     in_file.open (fname.c_str (), std::ifstream::in);
     assert (!in_file.fail ());
 
@@ -194,7 +194,7 @@ int Ways::readNodes ()
     std::cout.flush ();
 
     float nodeLonmin = FLOAT_MAX, nodeLatmin = FLOAT_MAX,
-        nodeLonmax = -FLOAT_MAX, nodeLatmax = -FLOAT_MAX;
+          nodeLonmax = -FLOAT_MAX, nodeLatmax = -FLOAT_MAX;
 
     while (getline (in_file, linetxt, '\n'))
     {
@@ -253,7 +253,7 @@ int Ways::readNodes ()
     umapPair_Itr umapitr;
     std::vector <long long> waynodes;
     boost::unordered_set <long long> extraNodes;
-    
+
     while (getline (in_file, linetxt, '\n'))
     {
         if (linetxt.find ("<way") != std::string::npos)
@@ -270,7 +270,7 @@ int Ways::readNodes ()
                 for (std::vector <long long>::iterator itr=waynodes.begin ();
                         itr != waynodes.end (); itr++)
                     if (allNodes.find (*itr) == allNodes.end () &&
-                        extraNodes.find (*itr) == extraNodes.end ())
+                            extraNodes.find (*itr) == extraNodes.end ())
                         extraNodes.insert (*itr);
             } // end if highway
             inway = false;
@@ -376,7 +376,7 @@ int Ways::readAllWays ()
     std::vector <long long> waynodes;
     std::string linetxt, tempstr;
     std::ifstream in_file;
-    
+
     in_file.open (osmFile.c_str (), std::ifstream::in);
     assert (!in_file.fail ());
     in_file.clear ();

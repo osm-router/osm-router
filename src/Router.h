@@ -138,7 +138,9 @@ class Ways
     private:
     Graph_t gFull, gCompact;
     std::string profileName;
-    unsigned numWeightingProfiles=0, countWeightingProfiles;
+    std::mt19937 mTwister;
+    std::normal_distribution<> norm_dist;
+    unsigned countWeightingProfiles = 0;
     protected:
     float latmin, lonmin, latmax, lonmax;
     std::string _dirName;
@@ -147,6 +149,7 @@ class Ways
     const std::string profileDir = "../data/weighting_profiles/";
     std::string osmFile;
     std::vector <ProfilePair> profile;
+    std::vector <boost::filesystem::path> profilePaths; 
     boost::unordered_set <long long> terminalNodes;
     dmat distMat;
 
@@ -177,55 +180,8 @@ class Ways
         std::cout << "---" << tempstr << "---" << std::endl;
         osmFile = osmDir + "planet-" + _city + ".osm";
 
-        boost::filesystem::path profiles (profileDir);
-        boost::filesystem::directory_iterator it (profiles), eod;
-
-        //count weighting profiles
-
-        for (boost::filesystem::directory_iterator itCount (profiles);
-                itCount != boost::filesystem::directory_iterator (); itCount++)
-        {
-            numWeightingProfiles++;
-        }
-
-        // initialize number generator for randomized edge weighting
-        std::random_device rd;
-        std::mt19937 mTwister (rd ());
-        std::normal_distribution<> norm_dist (0, stdDev);
-
-        BOOST_FOREACH (boost::filesystem::path const &p, std::make_pair (it, eod))
-        {
-            if (is_regular_file(p))
-            {
-                countWeightingProfiles++;
-                profileName = p.stem ().c_str ();
-                profileName = profileName.substr (profileName.find ("_") + 1);
-                std::cout << "Routing weight profile: " << profileName << " ("
-                    << countWeightingProfiles << "/" << numWeightingProfiles
-                    << ")" << std::endl;
-
-                setProfile (profileName.c_str (), &profile);
-
-                // These operations are only called once
-                if (firstRun)
-                {
-                    firstRun = false;
-                    err = getBBox ();
-                    err = readNodes();
-                    err = readAllWays ();
-                    err = getConnected ();
-                    err = readRoutingPoints ();
-                    distMat.resize (RoutingPointsList.size (), RoutingPointsList.size ());
-                }
-
-                // gFull is no longer needed, so can be destroyed
-                gFull.clear ();
-
-                err = readCompactWays (&mTwister, &norm_dist);
-                err = remapRoutingPoints ();
-                routeBetweenPoints ();
-            }
-        }
+        initialize (stdDev, &mTwister, &norm_dist);
+        iterateProfiles ();
     }
     ~Ways ()
     {
@@ -248,7 +204,10 @@ class Ways
     int dijkstra (long long fromNode);
     void writeDMat ();
     void routeBetweenPoints ();
-
+    void initialize (float stdDev,std::mt19937*
+            mTwister,std::normal_distribution<>* norm_dist);
+    void iterateProfiles ();
+    void runWeighted (boost::filesystem::path const &weightingProfile);
     float calcDist (std::vector <float> x, std::vector <float> y);
     long long nearestNode (float lon0, float lat0);
     std::string getCity () { return _city; }
@@ -284,4 +243,69 @@ void Ways::setProfile (const std::string& profileName, std::vector
         }
     }
     in_file.close ();
+};
+
+void Ways::initialize (float stdDev, std::mt19937 *mTwister,
+        std::normal_distribution<> *norm_dist)
+{
+    boost::filesystem::path profiles (profileDir);
+    boost::filesystem::directory_iterator it (profiles), eod;
+
+    //count weighting profiles
+    std::cout << "Looking for weight profiles...";
+    BOOST_FOREACH (boost::filesystem::path const &p, std::make_pair (it, eod))
+    {
+        if (is_regular_file(p))
+        {
+            profilePaths.push_back (p);
+        }
+    }
+    std::cout << "\rFound " << profilePaths.size () << " weighting profiles "
+        "in " << profileDir << std::endl;
+
+    // initialize number generator for randomized edge weighting
+    std::random_device rd;
+    std::mt19937 mTwist (rd ());
+    std::normal_distribution<> nd (0, stdDev);
+    *mTwister = mTwist;
+    *norm_dist = nd;
+}
+
+void Ways::runWeighted (boost::filesystem::path const &weightingProfile)
+{
+    countWeightingProfiles++;
+    profileName = weightingProfile.stem ().c_str ();
+    profileName = profileName.substr (profileName.find ("_") + 1);
+    std::cout << "Routing weight profile: " << profileName << " ("
+        << countWeightingProfiles << "/" << profilePaths.size ()
+        << ")" << std::endl;
+
+    setProfile (profileName.c_str (), &profile);
+
+    // These operations are only called once
+    if (firstRun)
+    {
+        firstRun = false;
+        err = getBBox ();
+        err = readNodes();
+        err = readAllWays ();
+        err = getConnected ();
+        err = readRoutingPoints ();
+        distMat.resize (RoutingPointsList.size (), RoutingPointsList.size ());
+    }
+
+    // gFull is no longer needed, so can be destroyed
+    gFull.clear ();
+
+    err = readCompactWays (&mTwister, &norm_dist);
+    err = remapRoutingPoints ();
+    routeBetweenPoints ();
+};
+
+void Ways::iterateProfiles ()
+{
+    for (auto path : profilePaths)
+    {
+        Ways::runWeighted (path);
+    }
 };
