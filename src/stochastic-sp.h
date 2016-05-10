@@ -540,8 +540,8 @@ int Router::calc_pmat (int toNode)
             if (pmat (i, j) > pmax)
                 pmax = pmat (i, j);
         }
-    // NOTE: pmat values are commonly 1+O(10^-7) or so
-    // assert (pmax <= 1.0);
+    // assert (pmax <= 1.0); // often fails
+    assert ((pmax - 1.0) == 0.0); // works
     // pmat is then the matrix Q of Saeren et al
 
     /*

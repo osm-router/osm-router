@@ -31,6 +31,7 @@ then
 else
     tmux send-keys -t $SESSION:1 'vim stochastic-sp.h' C-m
     tmux send-keys -t $SESSION:1 ':' 'tabe stochastic-sp.c++' C-m
+    tmux send-keys -t $SESSION:1 '1gt' C-m
 fi
 
 cd ..
