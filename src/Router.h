@@ -146,7 +146,6 @@ class Ways
     std::string _dirName;
     const std::string _city;
     const std::string osmDir = "../data/";
-    const std::string profileDir = "../data/weighting_profiles/";
     std::string osmFile;
     std::vector <ProfilePair> profile;
     std::vector <boost::filesystem::path> profilePaths; 
@@ -179,9 +178,6 @@ class Ways
                 tempstr.begin(), ::toupper);
         std::cout << "---" << tempstr << "---" << std::endl;
         osmFile = osmDir + "planet-" + _city + ".osm";
-
-//        initialize (stdDev);
-//        iterateProfiles ();
     }
     ~Ways ()
     {
@@ -192,8 +188,8 @@ class Ways
     std::string returnDirName () { return _dirName; }
     std::string returnCity () { return _city; }
 
-    void setProfile (const std::string& profileName, std::vector <ProfilePair>*
-            profile);
+    void setProfile (boost::filesystem::path const &weightingProfile,
+            std::vector <ProfilePair>* profile);
     int getBBox ();
     int readNodes ();
     int readAllWays ();
@@ -204,7 +200,7 @@ class Ways
     int dijkstra (long long fromNode);
     void writeDMat ();
     void routeBetweenPoints ();
-    void initialize (float stdDev);
+    void initialize (float stdDev, std::string profileDir);
     void iterateProfiles ();
     void runWeighted (boost::filesystem::path const &weightingProfile);
     float calcDist (std::vector <float> x, std::vector <float> y);
@@ -213,11 +209,9 @@ class Ways
     std::string getCityProfile () { return _city + "_" + profileName;  }
 };
 
-void Ways::setProfile (const std::string& profileName, std::vector
-        <ProfilePair>* profile)
+void Ways::setProfile (boost::filesystem::path const &weightingProfile,
+        std::vector <ProfilePair>* profile)
 {
-    const std::string configfile = "../data/weighting_profiles/profile_" + \
-                                    profileName + ".cfg"; 
     int ipos;
     float value;
     std::string line, field;
@@ -225,7 +219,7 @@ void Ways::setProfile (const std::string& profileName, std::vector
 
     profile->resize (0);
 
-    in_file.open (configfile.c_str (), std::ifstream::in);
+    in_file.open (weightingProfile.c_str (), std::ifstream::in);
     assert (!in_file.fail ());
 
     while (!in_file.eof ())
@@ -248,7 +242,7 @@ void Ways::setProfile (const std::string& profileName, std::vector
  * Lists all routing profiles in the given directory and stores their file
  * names; initialize the random number generator for edge weighting
  */
-void Ways::initialize (float stdDev)
+void Ways::initialize (float stdDev, std::string profileDir)
 {
     boost::filesystem::path profiles (profileDir);
     boost::filesystem::directory_iterator it (profiles), eod;
@@ -296,7 +290,7 @@ void Ways::runWeighted (boost::filesystem::path const &weightingProfile)
         << countWeightingProfiles << "/" << profilePaths.size ()
         << ")" << std::endl;
 
-    setProfile (profileName.c_str (), &profile);
+    setProfile (weightingProfile, &profile);
 
     // These operations are only called once
     if (firstRun)

@@ -44,7 +44,7 @@
  ************************************************************************/
 
 int main(int argc, char *argv[]) {
-    std::string city;
+    std::string city, profileDir;
     float stdDev;
 
     try {
@@ -60,6 +60,9 @@ int main(int argc, char *argv[]) {
              (&city)->default_value ("london"), "city")
             ("stdDev,s", boost::program_options::value <float>
              (&stdDev)->default_value (0), "standard deviation of edge weights")
+            ("profiles,p", boost::program_options::value <std::string>
+             (&profileDir)->default_value ("../data/weighting_profiles/"),
+             "location of weighting profiles")
             ;
 
         boost::program_options::options_description cmdline_options;
@@ -98,7 +101,7 @@ int main(int argc, char *argv[]) {
         city = "nyc";
 
     Ways ways (city);
-    ways.initialize (stdDev);
+    ways.initialize (stdDev, profileDir);
     ways.iterateProfiles ();
 };
 
