@@ -97,7 +97,9 @@ int main(int argc, char *argv[]) {
     else if (city.substr (0, 2) == "ny")
         city = "nyc";
 
-    Ways ways (city, stdDev);
+    Ways ways (city);
+    ways.initialize (stdDev);
+    ways.iterateProfiles ();
 };
 
 

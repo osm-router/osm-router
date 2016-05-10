@@ -171,7 +171,7 @@ class Ways
     bool firstRun = true;
     std::vector <RoutingPoint> RoutingPointsList;
     std::vector <float> dists;
-    Ways (std::string str, float stdDev)
+    Ways (std::string str)
         : _city (str)
     {
         tempstr = _city;
@@ -180,8 +180,8 @@ class Ways
         std::cout << "---" << tempstr << "---" << std::endl;
         osmFile = osmDir + "planet-" + _city + ".osm";
 
-        initialize (stdDev, &mTwister, &norm_dist);
-        iterateProfiles ();
+//        initialize (stdDev);
+//        iterateProfiles ();
     }
     ~Ways ()
     {
@@ -204,8 +204,7 @@ class Ways
     int dijkstra (long long fromNode);
     void writeDMat ();
     void routeBetweenPoints ();
-    void initialize (float stdDev,std::mt19937* mTwister,
-            std::normal_distribution<>* norm_dist);
+    void initialize (float stdDev);
     void iterateProfiles ();
     void runWeighted (boost::filesystem::path const &weightingProfile);
     float calcDist (std::vector <float> x, std::vector <float> y);
@@ -249,8 +248,7 @@ void Ways::setProfile (const std::string& profileName, std::vector
  * Lists all routing profiles in the given directory and stores their file
  * names; initialize the random number generator for edge weighting
  */
-void Ways::initialize (float stdDev, std::mt19937 *mTwister,
-        std::normal_distribution<> *norm_dist)
+void Ways::initialize (float stdDev)
 {
     boost::filesystem::path profiles (profileDir);
     boost::filesystem::directory_iterator it (profiles), eod;
@@ -271,8 +269,8 @@ void Ways::initialize (float stdDev, std::mt19937 *mTwister,
     std::random_device rd;
     std::mt19937 mTwist (rd ());
     std::normal_distribution<> nd (0, stdDev);
-    *mTwister = mTwist;
-    *norm_dist = nd;
+    mTwister = mTwist;
+    norm_dist = nd;
 }
 
 /*
