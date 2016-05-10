@@ -204,8 +204,8 @@ class Ways
     int dijkstra (long long fromNode);
     void writeDMat ();
     void routeBetweenPoints ();
-    void initialize (float stdDev,std::mt19937*
-            mTwister,std::normal_distribution<>* norm_dist);
+    void initialize (float stdDev,std::mt19937* mTwister,
+            std::normal_distribution<>* norm_dist);
     void iterateProfiles ();
     void runWeighted (boost::filesystem::path const &weightingProfile);
     float calcDist (std::vector <float> x, std::vector <float> y);
@@ -245,6 +245,10 @@ void Ways::setProfile (const std::string& profileName, std::vector
     in_file.close ();
 };
 
+/*
+ * Lists all routing profiles in the given directory and stores their file
+ * names; initialize the random number generator for edge weighting
+ */
 void Ways::initialize (float stdDev, std::mt19937 *mTwister,
         std::normal_distribution<> *norm_dist)
 {
@@ -271,6 +275,20 @@ void Ways::initialize (float stdDev, std::mt19937 *mTwister,
     *norm_dist = nd;
 }
 
+/*
+ * Wrapper to iterate through multiple weight profiles
+ */
+void Ways::iterateProfiles ()
+{
+    for (auto path : profilePaths)
+    {
+        Ways::runWeighted (path);
+    }
+};
+
+/*
+ * Runs the routing routine for all points based on the provided weight profile
+ */
 void Ways::runWeighted (boost::filesystem::path const &weightingProfile)
 {
     countWeightingProfiles++;
@@ -302,10 +320,31 @@ void Ways::runWeighted (boost::filesystem::path const &weightingProfile)
     routeBetweenPoints ();
 };
 
-void Ways::iterateProfiles ()
+/*
+ * Iterates through the list of routing points and calls the routing procedure;
+ * then writes the results to a file.
+ */
+void Ways::routeBetweenPoints ()
 {
-    for (auto path : profilePaths)
+    std::cout << "Getting distances between routing points";
+    std::cout.flush ();
+    count = 0;
+    for (std::vector<RoutingPoint>::iterator itr = RoutingPointsList.begin ();
+            itr != RoutingPointsList.end(); itr++)
     {
-        Ways::runWeighted (path);
+        err = dijkstra (itr->nodeIndex);
+        assert (dists.size () == RoutingPointsList.size ());
+        std::cout << "\rGetting distances between routing points " <<
+            count << "/" << RoutingPointsList.size () <<
+            " ";
+        std::cout.flush ();
+        count++;
     }
+    std::cout << "\rGetting distances between routing points " <<
+        RoutingPointsList.size () << "/" << RoutingPointsList.size
+        () << std::endl;
+    std::cout << "done." << std::endl;
+
+    writeDMat ();
+    gCompact.clear ();
 };
