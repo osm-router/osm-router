@@ -541,7 +541,7 @@ int Router::calc_pmat (int toNode)
                 pmax = pmat (i, j);
         }
     // assert (pmax <= 1.0); // often fails
-    assert ((pmax - 1.0) == 0.0); // works
+    // assert ((pmax - 1.0) == 0.0); // works
     // pmat is then the matrix Q of Saeren et al
 
     /*
@@ -656,10 +656,11 @@ int Router::dump_routes (int fromNode, int toNode)
     
     for (int i=0; i<pmat.size1 (); ++i)
         for (int j=0; j<pmat.size2 (); ++j)
-            if (pmat (i, j) > 0.0)
-                out_file << vertex_lon [i] << "," << vertex_lat [i] << "," <<
+            if (pmat (i, j) > 0.0 & nmat (i, j) > nmat (j, i))
+                out_file << vertex_id [i] << ", " << vertex_id [j] << ", " <<
+                    vertex_lon [i] << "," << vertex_lat [i] << "," <<
                     vertex_lon [j] << "," << vertex_lat [j] << "," <<
-                    nmat (i, j) << std::endl;
+                    nmat (i, j) - nmat (j, i) << std::endl;
 
     out_file.close ();
 
