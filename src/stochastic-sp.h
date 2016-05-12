@@ -449,8 +449,7 @@ int Router::calc_z1 (int fromNode)
                 else
                     z1 [i] += wmat (j, i) * z1_old [j];
             
-            if (i != fromNode)
-                diff += std::abs (z1 [i] - z1_old [i]);
+            diff += std::abs (z1 [i] - z1_old [i]);
         }
         for (int i=0; i<nv; i++)
             z1_old [i] = z1 [i];
@@ -499,8 +498,7 @@ int Router::calc_zn (int toNode)
                 else
                     zn [i] += wmat (i, j) * zn_old [j];
             
-            if (i != toNode)
-                diff += std::abs (zn [i] - zn_old [i]);
+            diff += std::abs (zn [i] - zn_old [i]);
         }
         for (int i=0; i<nv; i++)
             zn_old [i] = zn [i];
@@ -528,8 +526,6 @@ int Router::calc_pmat (int toNode)
 
     pmat.resize (nv, nv);
 
-    // TODO: Delete pmax
-    float pmax = 0.0;
     for (int i=0; i<nv; i++)
         for (int j=0; j<nv; j++)
         {
@@ -537,14 +533,9 @@ int Router::calc_pmat (int toNode)
                 pmat (i, j) = zn [j] * wmat (i, j) / zn [i];
             else
                 pmat (i, j) = 0.0;
-            if (pmat (i, j) > pmax)
-                pmax = pmat (i, j);
         }
-    // assert (pmax <= 1.0); // often fails
-    // assert ((pmax - 1.0) == 0.0); // works
     // pmat is then the matrix Q of Saeren et al
 
-    /*
     for (int i=0; i<nv; i++)
     {
         pmat (toNode, i) = 0.0;
@@ -554,7 +545,6 @@ int Router::calc_pmat (int toNode)
             pmat (i, toNode) = 0.0;
     }
     pmat (toNode, toNode) = 1.0;
-    */
 
     return 0;
 } // end Router::calc_pmat
@@ -654,13 +644,17 @@ int Router::dump_routes (int fromNode, int toNode)
 
     out_file.open ("junk.txt", std::ofstream::out);
     
+    // TODO: Delete these and write the whole thing better
+    assert (pmat.size1() == nmat.size1());
+    assert (pmat.size2() == nmat.size2());
+
     for (int i=0; i<pmat.size1 (); ++i)
         for (int j=0; j<pmat.size2 (); ++j)
             if (pmat (i, j) > 0.0 & nmat (i, j) > nmat (j, i))
                 out_file << vertex_id [i] << ", " << vertex_id [j] << ", " <<
                     vertex_lon [i] << "," << vertex_lat [i] << "," <<
                     vertex_lon [j] << "," << vertex_lat [j] << "," <<
-                    nmat (i, j) - nmat (j, i) << std::endl;
+                    nmat (i, j) << ", " << nmat (j, i) << std::endl;
 
     out_file.close ();
 
