@@ -63,6 +63,7 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/property_map/property_map.hpp>
+//#include <Rcpp.h>
 
 
 typedef std::pair <double, double> ddPair;

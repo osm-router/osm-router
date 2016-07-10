@@ -13,8 +13,7 @@ tmux -2 new-session -d -s $SESSION
 tmux new-window -t $SESSION:1 -k -n main
 if [ $option -eq 1 ]
 then
-    tmux send-keys -t $SESSION:1 'vim Utils.h' C-m
-    tmux send-keys -t $SESSION:1 ':' 'tabe ../profile.cfg' C-m
+    tmux send-keys -t $SESSION:1 'vim Router.h' C-m
     tmux send-keys -t $SESSION:1 '1gt' C-m
 else
     tmux send-keys -t $SESSION:1 'vim xml-parser.h' C-m
@@ -25,8 +24,7 @@ fi
 tmux split-window -h
 if [ $option -eq 1 ]
 then
-    tmux send-keys -t $SESSION:1 'vim Router.h' C-m
-    tmux send-keys -t $SESSION:1 ':' 'tabe Router.c++' C-m
+    tmux send-keys -t $SESSION:1 'vim Router.c++' C-m
     tmux select-pane -t 0
 else
     tmux send-keys -t $SESSION:1 'vim stochastic-sp.h' C-m

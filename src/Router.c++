@@ -44,8 +44,8 @@
  ************************************************************************/
 
 int main(int argc, char *argv[]) {
-    std::string city, profileDir;
-    float stdDev;
+    std::string city, profileDir, osmFile;
+    float stdDev, lonmin, latmin, lonmax, latmax;
 
     try {
         boost::program_options::options_description generic("Generic options");
@@ -63,6 +63,18 @@ int main(int argc, char *argv[]) {
             ("profiles,p", boost::program_options::value <std::string>
              (&profileDir)->default_value ("../data/weighting_profiles/"),
              "location of weighting profiles")
+            ("file,f", boost::program_options::value <std::string> 
+                (&osmFile)->default_value (""), 
+                "file name (.xml will be appended)")
+            ("lonmin,a", boost::program_options::value <float> 
+                (&lonmin)->default_value (-0.12), 
+                "lonmin (ignored if file exists)")
+            ("latmin,b", boost::program_options::value <float> 
+                (&latmin)->default_value (51.515), "latmin (ditto)")
+            ("lonmax,c", boost::program_options::value <float> 
+                (&lonmax)->default_value (-0.115), "lonmax (ditto)")
+            ("latmax,d", boost::program_options::value <float> 
+                (&latmax)->default_value (51.52), "latmax (ditto)")
             ;
 
         boost::program_options::options_description cmdline_options;
