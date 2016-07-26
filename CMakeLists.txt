@@ -13,11 +13,11 @@ ADD_DEFINITIONS(
     #-DCURL_STATICLIB
 )
 
-set(SOURCES_GRAPH src/Graph.c++)
-set(SOURCES_XML src/xml-parser.c++)
-set(SOURCES_ROUTER src/Router.c++)
-set(SOURCES_SP src/stochastic-sp.c++)
-set(SOURCES_TEST src/stochastic-test.c++)
+set(SOURCES_GRAPH src/Graph.cpp)
+set(SOURCES_XML src/xml-parser.cpp)
+set(SOURCES_ROUTER src/Router.cpp)
+set(SOURCES_SP src/stochastic-sp.cpp)
+set(SOURCES_TEST src/stochastic-test.cpp)
 
 add_executable(${TARGET_GRAPH} ${SOURCES_GRAPH})
 add_executable(${TARGET_XML} ${SOURCES_XML})
