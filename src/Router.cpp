@@ -1,6 +1,6 @@
 /***************************************************************************
  *  Project:    osm-router
- *  File:       Router.c++
+ *  File:       Router.cpp
  *  Language:   C++
  *
  *  osm-router is free software: you can redistribute it and/or modify it

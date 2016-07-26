@@ -52,14 +52,13 @@ fi
 
 if [ $option -eq 1 ]
 then
-    cd ./extract_profiles/
-    tmux new-window -t $SESSION:3 -n extract_profile
+    cd ./R/
+    tmux new-window -t $SESSION:3 -n R
 
     tmux select-window -t $SESSION:3
-    tmux send-keys -t $SESSION:3 'vim extract.c++' C-m
+    tmux send-keys -t $SESSION:3 'vim osm-router.R' C-m
     tmux split-window -h
-    tmux send-keys -t $SESSION:3 'vim Makefile' C-m
-    tmux split-window -v
+    tmux send-keys -t $SESSION:3 'vim RcppExports.R' C-m
     tmux select-pane -t 0
 fi
 

@@ -1,0 +1,3 @@
+useDynLib(osm-router)
+exportPattern("^[[:alpha:]]+")
+importFrom(Rcpp, evalCpp)
