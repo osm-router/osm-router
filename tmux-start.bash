@@ -17,20 +17,20 @@ then
     tmux send-keys -t $SESSION:1 '1gt' C-m
 else
     tmux send-keys -t $SESSION:1 'vim xml-parser.h' C-m
-    tmux send-keys -t $SESSION:1 ':' 'tabe xml-parser.c++' C-m
+    tmux send-keys -t $SESSION:1 ':' 'tabe xml-parser.cpp' C-m
     tmux send-keys -t $SESSION:1 ':' 'tabe Graph.h' C-m
-    tmux send-keys -t $SESSION:1 ':' 'tabe Graph.c++' C-m
+    tmux send-keys -t $SESSION:1 ':' 'tabe Graph.cpp' C-m
 fi
 tmux split-window -h
 if [ $option -eq 1 ]
 then
-    tmux send-keys -t $SESSION:1 'vim Router.c++' C-m
+    tmux send-keys -t $SESSION:1 'vim Router.cpp' C-m
     tmux select-pane -t 0
 else
     tmux send-keys -t $SESSION:1 'vim stochastic-sp.h' C-m
-    tmux send-keys -t $SESSION:1 ':' 'tabe stochastic-sp.c++' C-m
+    tmux send-keys -t $SESSION:1 ':' 'tabe stochastic-sp.cpp' C-m
     tmux send-keys -t $SESSION:1 ':' 'tabe stochastic-test.h' C-m
-    tmux send-keys -t $SESSION:1 ':' 'tabe stochastic-test.c++' C-m
+    tmux send-keys -t $SESSION:1 ':' 'tabe stochastic-test.cpp' C-m
     tmux send-keys -t $SESSION:1 '1gt' C-m
 fi
 
@@ -56,9 +56,9 @@ then
     tmux new-window -t $SESSION:3 -n R
 
     tmux select-window -t $SESSION:3
-    tmux send-keys -t $SESSION:3 'vim osm-router.R' C-m
+    tmux send-keys -t $SESSION:3 'vim get-route-density.R' C-m
     tmux split-window -h
-    tmux send-keys -t $SESSION:3 'vim RcppExports.R' C-m
+    tmux send-keys -t $SESSION:3 'R' C-m
     tmux select-pane -t 0
 fi
 
