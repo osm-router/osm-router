@@ -35,6 +35,8 @@
 
 #include "Router.h"
 
+#include <Rcpp.h>
+
 /************************************************************************
  ************************************************************************
  **                                                                    **
@@ -371,7 +373,8 @@ int Ways::readNodes ()
  ************************************************************************
  ************************************************************************/
 
-int Ways::readAllWays ()
+// [[Rcpp::export]]
+int Ways::readAllWays (std::string osmWays)
 {
     /*
      * The sole point of this routine is to make the boost::graph "gFull", which
@@ -420,8 +423,9 @@ int Ways::readAllWays ()
     // Can be used to plot a map of the network:
     //std::ofstream out_file;
     //out_file.open ("map.csv", std::ofstream::out);
+    std::istringstream osmWaysStream (osmWays);
 
-    while (getline (in_file, linetxt, '\n'))
+    while (getline (osmWaysStream, linetxt, '\n'))
     {
         if (linetxt.find ("<way") != std::string::npos)
         {
