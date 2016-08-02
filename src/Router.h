@@ -192,7 +192,7 @@ class Ways
             std::vector <ProfilePair>* profile);
     int getBBox ();
     int readNodes ();
-    int readAllWays (std::string osmWays);
+    int readAllWays ();
     int getConnected ();
     int readRoutingPoints ();
     int remapRoutingPoints ();
@@ -298,7 +298,7 @@ void Ways::runWeighted (boost::filesystem::path const &weightingProfile)
         firstRun = false;
         err = getBBox ();
         err = readNodes();
-        err = readAllWays (NULL);
+        err = readAllWays ();
         err = getConnected ();
         err = readRoutingPoints ();
         distMat.resize (RoutingPointsList.size (), RoutingPointsList.size ());

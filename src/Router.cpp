@@ -35,8 +35,6 @@
 
 #include "Router.h"
 
-#include <Rcpp.h>
-
 /************************************************************************
  ************************************************************************
  **                                                                    **
@@ -47,7 +45,7 @@
 
 int main(int argc, char *argv[]) {
     std::string city, profileDir, osmFile;
-    float stdDev, lonmin, latmin, lonmax, latmax;
+    float stdDev;
 
     try {
         boost::program_options::options_description generic("Generic options");
@@ -68,15 +66,6 @@ int main(int argc, char *argv[]) {
             ("file,f", boost::program_options::value <std::string> 
                 (&osmFile)->default_value (""), 
                 "file name (.xml will be appended)")
-            ("lonmin,a", boost::program_options::value <float> 
-                (&lonmin)->default_value (-0.12), 
-                "lonmin (ignored if file exists)")
-            ("latmin,b", boost::program_options::value <float> 
-                (&latmin)->default_value (51.515), "latmin (ditto)")
-            ("lonmax,c", boost::program_options::value <float> 
-                (&lonmax)->default_value (-0.115), "lonmax (ditto)")
-            ("latmax,d", boost::program_options::value <float> 
-                (&latmax)->default_value (51.52), "latmax (ditto)")
             ;
 
         boost::program_options::options_description cmdline_options;
@@ -373,8 +362,7 @@ int Ways::readNodes ()
  ************************************************************************
  ************************************************************************/
 
-// [[Rcpp::export]]
-int Ways::readAllWays (std::string osmWays)
+int Ways::readAllWays ()
 {
     /*
      * The sole point of this routine is to make the boost::graph "gFull", which
@@ -423,9 +411,8 @@ int Ways::readAllWays (std::string osmWays)
     // Can be used to plot a map of the network:
     //std::ofstream out_file;
     //out_file.open ("map.csv", std::ofstream::out);
-    std::istringstream osmWaysStream (osmWays);
 
-    while (getline (osmWaysStream, linetxt, '\n'))
+    while (getline (in_file, linetxt, '\n'))
     {
         if (linetxt.find ("<way") != std::string::npos)
         {

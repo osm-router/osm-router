@@ -50,18 +50,6 @@ else
     tmux send-keys -t $SESSION:2 'cd build/' C-m
 fi
 
-if [ $option -eq 1 ]
-then
-    cd ./R/
-    tmux new-window -t $SESSION:3 -n R
-
-    tmux select-window -t $SESSION:3
-    tmux send-keys -t $SESSION:3 'vim get-route-density.R' C-m
-    tmux split-window -h
-    tmux send-keys -t $SESSION:3 'R' C-m
-    tmux select-pane -t 0
-fi
-
 tmux select-window -t $SESSION:1
 
 tmux attach -t $SESSION
