@@ -34,7 +34,9 @@ Probabilistic OpenStreetMap router based on C++ boost::graph. Uses the following
 
     c. Build the routing files to pass a `SpatialLinesDataFrame` from `R` back to `Rcpp` (**A**)
 
-3. Incorporate probabilistic routing functionality
+3. Extend the `R` package to include a vignette and some unit tests (**A**)
+
+4. Incorporate probabilistic routing functionality
 
     a. Modify [`stochastic-sp.h`](https://github.com/osm-router/osm-router/blob/master/src/stochastic-sp.h) to the first algorithm of 
     [Saerens et al (2009)](http://www.mitpressjournals.org/doi/abs/10.1162/neco.2009.11-07-643) 
@@ -44,13 +46,13 @@ Probabilistic OpenStreetMap router based on C++ boost::graph. Uses the following
 
     c. Integrate the different routing algorithms within the `R` package (**A**)
 
-4. Actually do something useful, productive, and interesting withing the `R` package ... (all **A**)
+5. Actually do something useful, productive, and interesting withing the `R` package ... (all **A**)
 
     a. Visualisation
 
     b. Integrate over all routes to get expected, rather than shortest, distance
 
-5. Apply to case studies to determine such things as ... (all **A**)
+6. Apply to case studies to determine such things as ... (all **A**)
 
     a. Relationship between entropy and actual distances
 
