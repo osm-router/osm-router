@@ -50,4 +50,10 @@ Probabilistic OpenStreetMap router based on C++ boost::graph. Uses the following
 
     b. Integrate over all routes to get expected, rather than shortest, distance
 
+5. Apply to case studies to determine such things as ... (all **A**)
+
+    a. Relationship between entropy and actual distances
+
+    b. Performance? (In comparison with standard dijkstra?)
+
     c. ... ?
