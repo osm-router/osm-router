@@ -36,10 +36,10 @@ Probabilistic OpenStreetMap router based on C++ boost::graph. Uses the following
 
 ### Task checks
 
-[ ] 1 = **M**
+- [ ] 1 = **M**
 
-[ ] 2a = **A**
+- [ ] 2a = **A**
 
-[ ] 2b = **A**
+- [ ] 2b = **A**
 
-[ ] 2c = **A**
+- [ ] 2c = **A**
