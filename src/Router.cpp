@@ -1,6 +1,6 @@
 /***************************************************************************
  *  Project:    osm-router
- *  File:       Router.c++
+ *  File:       Router.cpp
  *  Language:   C++
  *
  *  osm-router is free software: you can redistribute it and/or modify it
@@ -44,7 +44,7 @@
  ************************************************************************/
 
 int main(int argc, char *argv[]) {
-    std::string city, profileDir;
+    std::string city, profileDir, osmFile;
     float stdDev;
 
     try {
@@ -63,6 +63,9 @@ int main(int argc, char *argv[]) {
             ("profiles,p", boost::program_options::value <std::string>
              (&profileDir)->default_value ("../data/weighting_profiles/"),
              "location of weighting profiles")
+            ("file,f", boost::program_options::value <std::string> 
+                (&osmFile)->default_value (""), 
+                "file name (.xml will be appended)")
             ;
 
         boost::program_options::options_description cmdline_options;

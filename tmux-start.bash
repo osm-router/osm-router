@@ -13,26 +13,24 @@ tmux -2 new-session -d -s $SESSION
 tmux new-window -t $SESSION:1 -k -n main
 if [ $option -eq 1 ]
 then
-    tmux send-keys -t $SESSION:1 'vim Utils.h' C-m
-    tmux send-keys -t $SESSION:1 ':' 'tabe ../profile.cfg' C-m
+    tmux send-keys -t $SESSION:1 'vim Router.h' C-m
     tmux send-keys -t $SESSION:1 '1gt' C-m
 else
     tmux send-keys -t $SESSION:1 'vim xml-parser.h' C-m
-    tmux send-keys -t $SESSION:1 ':' 'tabe xml-parser.c++' C-m
+    tmux send-keys -t $SESSION:1 ':' 'tabe xml-parser.cpp' C-m
     tmux send-keys -t $SESSION:1 ':' 'tabe Graph.h' C-m
-    tmux send-keys -t $SESSION:1 ':' 'tabe Graph.c++' C-m
+    tmux send-keys -t $SESSION:1 ':' 'tabe Graph.cpp' C-m
 fi
 tmux split-window -h
 if [ $option -eq 1 ]
 then
-    tmux send-keys -t $SESSION:1 'vim Router.h' C-m
-    tmux send-keys -t $SESSION:1 ':' 'tabe Router.c++' C-m
+    tmux send-keys -t $SESSION:1 'vim Router.cpp' C-m
     tmux select-pane -t 0
 else
     tmux send-keys -t $SESSION:1 'vim stochastic-sp.h' C-m
-    tmux send-keys -t $SESSION:1 ':' 'tabe stochastic-sp.c++' C-m
+    tmux send-keys -t $SESSION:1 ':' 'tabe stochastic-sp.cpp' C-m
     tmux send-keys -t $SESSION:1 ':' 'tabe stochastic-test.h' C-m
-    tmux send-keys -t $SESSION:1 ':' 'tabe stochastic-test.c++' C-m
+    tmux send-keys -t $SESSION:1 ':' 'tabe stochastic-test.cpp' C-m
     tmux send-keys -t $SESSION:1 '1gt' C-m
 fi
 
@@ -50,19 +48,6 @@ then
 else
     tmux send-keys -t $SESSION:2 'git st' C-m
     tmux send-keys -t $SESSION:2 'cd build/' C-m
-fi
-
-if [ $option -eq 1 ]
-then
-    cd ./extract_profiles/
-    tmux new-window -t $SESSION:3 -n extract_profile
-
-    tmux select-window -t $SESSION:3
-    tmux send-keys -t $SESSION:3 'vim extract.c++' C-m
-    tmux split-window -h
-    tmux send-keys -t $SESSION:3 'vim Makefile' C-m
-    tmux split-window -v
-    tmux select-pane -t 0
 fi
 
 tmux select-window -t $SESSION:1

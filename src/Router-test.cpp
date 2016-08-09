@@ -1,6 +1,6 @@
 /***************************************************************************
  *  Project:    osm-router
- *  File:       stochastic-sp.c++
+ *  File:       Router.cpp
  *  Language:   C++
  *
  *  osm-router is free software: you can redistribute it and/or modify it
@@ -34,7 +34,7 @@
  *  Compiler Options:   -std=c++11 -lboost_program_options 
  ***************************************************************************/
 
-#include "stochastic-test.h"
+#include "Router-test.h"
 
 /************************************************************************
  ************************************************************************
@@ -45,8 +45,10 @@
  ************************************************************************/
 
 int main(int argc, char *argv[]) {
-
-    float theta;
+    bool compact;
+    float xfrom, yfrom, xto, yto;
+    Bbox bbox;
+    std::string xml_file, profile_file;
 
     try {
         boost::program_options::options_description generic("Generic options");
@@ -57,8 +59,23 @@ int main(int argc, char *argv[]) {
 
         boost::program_options::options_description config("Configuration");
         config.add_options()
-            ("theta,t", boost::program_options::value <float> 
-                (&theta)->default_value (1.1), "theta")
+            ("graph compact, g", boost::program_options::value <bool>
+                (&compact)->default_value (true),
+                "use compact graph")
+            ("xml_file,f", boost::program_options::value <std::string> 
+                (&xml_file)->default_value ("xmldat.xml"), 
+                "xml_file name (.xml will be appended)")
+            ("profile_file,p", boost::program_options::value <std::string> 
+                (&profile_file)->default_value ("../profile.cfg"), 
+                "profile file name")
+            ("xfrom,a", boost::program_options::value <float> 
+                (&xfrom)->default_value (-0.118), "xfrom")
+            ("yfrom,b", boost::program_options::value <float> 
+                (&yfrom)->default_value (51.517), "yfrom")
+            ("xto,c", boost::program_options::value <float> 
+                (&xto)->default_value (-0.117), "xto")
+            ("yto,d", boost::program_options::value <float> 
+                (&yto)->default_value (51.518), "yto")
             ;
 
         boost::program_options::options_description cmdline_options;
@@ -90,5 +107,54 @@ int main(int argc, char *argv[]) {
         return 1;
     }    
 
-    Test test (theta); 
+    bbox = get_bbox (xfrom, yfrom, xto, yto);
+
+    Router router (xml_file, profile_file, 
+            xfrom, yfrom, xto, yto,
+            bbox.lonmin, bbox.latmin, bbox.lonmax, bbox.latmax, compact); 
 };
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                               GETBBOX                              **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+Bbox get_bbox (float xfrom, float yfrom, float xto, float yto, float expand)
+{
+    // expand is in both directions, so actually twice that value
+    float xmin, ymin, xmax, ymax, xrange, yrange;
+    Bbox bbox;
+
+    if (xfrom < xto)
+    {
+        xmin = xfrom;
+        xmax = xto;
+    } else
+    {
+        xmin = xto;
+        xmax = xfrom;
+    }
+    if (yfrom < yto)
+    {
+        ymin = yfrom;
+        ymax = yto;
+    } else
+    {
+        ymin = yto;
+        ymax = yfrom;
+    }
+
+    xrange = xmax - xmin;
+    yrange = ymax - ymin;
+
+    bbox.lonmin = xmin - xrange * expand;
+    bbox.lonmax = xmax + xrange * expand;
+    bbox.latmin = ymin - yrange * expand;
+    bbox.latmax = ymax + yrange * expand;
+
+    return bbox;
+}
