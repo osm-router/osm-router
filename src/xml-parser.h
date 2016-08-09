@@ -81,7 +81,7 @@ struct Way
     bool oneway;
     long long id;
     std::string type, name; // type is highway type (value for highway key)
-    std::vector <std::pair <std::string, std::string>> key_val;
+    std::vector <std::pair <std::string, std::string> > key_val;
     std::vector <long long> nodes;
 };
 
@@ -185,7 +185,7 @@ class Xml
         if (boost::filesystem::exists (p))
         {
             std::ifstream in_file;
-            in_file.open (_file, std::ifstream::in);
+            in_file.open (_file.c_str (), std::ifstream::in);
             assert (!in_file.fail ());
             std::stringstream ss;
             ss << in_file.rdbuf ();
@@ -197,7 +197,7 @@ class Xml
             tempstr = readOverpass ();
             // Write raw xml data to _file:
             std::ofstream out_file;
-            out_file.open (_file, std::ofstream::out);
+            out_file.open (_file.c_str (), std::ofstream::out);
             out_file << tempstr;
             out_file.flush ();
             out_file.close ();
