@@ -21,25 +21,16 @@ Probabilistic OpenStreetMap router based on C++ boost::graph. Uses the following
 
 # To do ...
 
-1. Finish [`osmdatar`](https://github.com/osmdatar/osmdatar)
+1. Finish [`osmdatar`](https://github.com/osmdatar/osmdatar/issues/3) (**M**)
 
 2. Convert `osm-router` to R package (using current 
     [Router::dijkstra](https://github.com/osm-router/osm-router/blob/master/src/Router-test.h))
 
-    a. Use [`osmdatar`](https://github.com/osmdatar/osmdatar) to obtain all data as `R` `sp` structures
+    a. Use [`osmdatar`](https://github.com/osmdatar/osmdatar) to obtain all data as `R` `sp` structures (**M**)
 
     b. Rewrite the `Graph::makeCompactGraph ()` function in 
     [`src/Graph.h`](https://github.com/osm-router/osm-router/blob/master/src/Graph.h) to read and return `SpatialLinesDataFrame` objects
-    directly from `R`
+    directly from `R` (**A**)
 
-    c. Build the routing files to pass a `SpatialLinesDataFrame` from `R` back to `Rcpp`
+    c. Build the routing files to pass a `SpatialLinesDataFrame` from `R` back to `Rcpp` (**A**)
 
-### Task checks
-
-- [ ] 1 = **M**
-
-- [ ] 2a = **A**
-
-- [ ] 2b = **A**
-
-- [ ] 2c = **A**
